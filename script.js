@@ -299,7 +299,7 @@ function renderKPIs(data = KPI_DATA) {
             listHtml = `
             <div class="mt-4 border-t border-slate-100 pt-3 space-y-1.5">
                 ${kpi.list.map(item => `
-                    <div class="text-[11px] leading-tight font-bold text-slate-800 bg-slate-50 px-2 py-2 rounded-lg border-l-4 ${borderColorClass} shadow-sm hover:bg-slate-100 transition-colors break-words" title="${item}">
+                    <div class="text-sm leading-tight font-bold text-slate-800 bg-slate-50 px-2 py-2 rounded-lg border-l-4 ${borderColorClass} shadow-sm hover:bg-slate-100 transition-colors break-words" title="${item}">
                         ${item}
                     </div>
                 `).join('')}
@@ -315,9 +315,9 @@ function renderKPIs(data = KPI_DATA) {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                     </svg>
                 </div>
-                <h3 class="text-slate-500 font-bold text-[10px] leading-tight uppercase truncate" title="${kpi.title}">${kpi.title}</h3>
+                <h3 class="text-slate-500 font-bold text-xs leading-tight uppercase truncate" title="${kpi.title}">${kpi.title}</h3>
             </div>
-            <p class="text-lg font-black text-slate-800 mt-2 truncate" title="${kpi.amount}">${kpi.amount}</p>
+            <p class="text-2xl font-black text-slate-800 mt-2 truncate" title="${kpi.amount}">${kpi.amount}</p>
             ${listHtml}
         </div>
         `;
