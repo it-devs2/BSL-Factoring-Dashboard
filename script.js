@@ -564,11 +564,10 @@ function renderCharts(companyData = []) {
                             }
                         },
                         datalabels: {
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 2,
-                            color: '#334155',
-                            font: { size: 10, weight: 'bold' },
+                            anchor: 'center',
+                            align: 'center',
+                            color: '#ffffff',
+                            font: { size: 11, weight: 'bold' },
                             formatter: function(value) {
                                 if (!value || value === 0) return '';
                                 return (value / 1000000).toFixed(1) + 'M';
@@ -635,11 +634,10 @@ function renderCharts(companyData = []) {
                             }
                         },
                         datalabels: {
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 2,
-                            color: '#334155',
-                            font: { size: 10, weight: 'bold' },
+                            anchor: 'center',
+                            align: 'center',
+                            color: '#ffffff',
+                            font: { size: 11, weight: 'bold' },
                             formatter: function(value) {
                                 if (!value || value === 0) return '';
                                 return (value / 1000000).toFixed(1) + 'M';
