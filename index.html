@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSL Factoring Dashboard</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-8">
+    <div class="max-w-[1600px] mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-800">BSL Factoring Dashboard</h1>
+                <p class="text-slate-500 mt-1">ภาพรวมข้อมูลการรับซื้อและลูกหนี้</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex flex-wrap items-center gap-3">
+                <!-- กล่องวงเงินที่ใช้ได้ (F - E) -->
+                <div class="bg-emerald-50 border border-emerald-100 rounded-lg px-4 py-2 flex items-center space-x-3 shadow-sm hidden md:flex" id="usable-credit-container">
+                    <div class="bg-emerald-100 p-1.5 rounded-md text-emerald-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">วงเงินที่ใช้ได้</p>
+                        <p class="text-lg font-bold text-slate-800 leading-none mt-1" id="usable-credit-amount">฿0.00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4" id="kpi-container">
+            <!-- Cards will be injected by script.js -->
+        </div>
+
+        <!-- Filters Area for Charts -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6 mt-8">
+            <div class="flex items-center space-x-2">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                <h3 class="font-bold text-slate-700">ตัวกรองข้อมูลกราฟ</h3>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-3 md:mt-0">
+                <select id="filter-day" class="bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm">
+                    <option value="">วัน (ทั้งหมด)</option>
+                </select>
+                <select id="filter-month" class="bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm">
+                    <option value="">เดือน (ทั้งหมด)</option>
+                </select>
+                <select id="filter-year" class="bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm">
+                    <option value="">ปี (ทั้งหมด)</option>
+                </select>
+                <select id="filter-debtor" class="bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-sm max-w-xs">
+                    <option value="">ลูกหนี้ (ทั้งหมด)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-6" id="chart1-title">กราฟเปรียบเทียบ วงเงิน vs ยอดที่ใช้ไป (8 บริษัทหลัก)</h3>
+            <div class="relative h-80 w-full">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6">
+            <h3 class="text-lg font-bold text-slate-800 mb-6" id="chart2-title">กราฟเปรียบเทียบ ยอดที่ใช้ไป vs วงเงินคงเหลือ (8 บริษัทหลัก)</h3>
+            <div class="relative h-80 w-full">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <h3 class="text-lg font-bold text-slate-800 mb-6">ตารางข้อมูลจาก Google Sheets</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium text-sm" id="table-head">
+                            <!-- Injected by JS -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Custom Script -->
+    <script src="script.js?v=2.0"></script>
+</body>
+</html>
