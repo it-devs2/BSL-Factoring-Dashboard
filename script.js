@@ -41,6 +41,82 @@ const KPI_DATA = [
 // ใส่ลิงก์ URL ที่ได้จากการ Deploy Web App ของ Google Apps Script ที่นี่
 const API_URL = "https://script.google.com/macros/s/AKfycby2-H9fuh0eGdD0OurjJeqGOuo343puWMmcHERVz787V_hVZo1_Wv8HXLKfI7HC8BrJ/exec";
 
+// เก็บ index ของคอลัมน์ที่ใช้ (ค้นหาอัตโนมัติจาก headers ถ้าหาไม่เจอใช้ default ด้านล่าง)
+// หมายเหตุ: index เริ่มจาก 0  →  A=0, B=1, ..., N=13, O=14, P=15, Q=16
+let DATA1_COL = {
+    date: 1,      // คอลัมน์ B - วันที่
+    debtor: 8,    // คอลัมน์ I - ชื่อลูกหนี้
+    used: 14,     // คอลัมน์ O - ยอดที่ใช้ไป (รับซื้อ 90%)
+    remain: 13    // คอลัมน์ N - วงเงินคงเหลือ (10%)
+};
+
+// --- Global Helper Functions ---
+// ฟังก์ชันล้างชื่อบริษัท (ตัดช่องว่างออกทั้งหมด และทำเป็นพิมพ์เล็ก) เพื่อให้เปรียบเทียบกันได้เป๊ะ 100%
+function normalizeName(name) {
+    if (!name) return "";
+    return name.toString().toLowerCase().replace(/\s+/g, "").replace(/[()\-\/]/g, "");
+}
+
+// ฟังก์ชันแยกวันที่จาก cell value (รองรับทั้ง ISO string, DD/MM/YYYY, และ Date object)
+// Return: { d, m, y } เป็น string เช่น { d: "14", m: "01", y: "2026" }
+function parseDateParts(value) {
+    if (!value) return { d: "", m: "", y: "" };
+
+    const str = value.toString().trim();
+
+    // รูปแบบ ISO: 2026-01-14T00:00:00.000Z
+    // ใช้ getUTC* เพื่อหลีกเลี่ยงปัญหา timezone (วันที่เพี้ยน 1 วัน)
+    if (str.includes('-') && str.includes('T')) {
+        const dt = new Date(str);
+        if (!isNaN(dt)) {
+            return {
+                d: dt.getUTCDate().toString().padStart(2, '0'),
+                m: (dt.getUTCMonth() + 1).toString().padStart(2, '0'),
+                y: dt.getUTCFullYear().toString()
+            };
+        }
+    }
+
+    // รูปแบบ DD/MM/YYYY
+    if (str.includes('/')) {
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            let y = parts[2];
+            // ถ้าเป็น พ.ศ. (เช่น 2569) แปลงเป็น ค.ศ.
+            if (parseInt(y) > 2400) y = (parseInt(y) - 543).toString();
+            return {
+                d: parts[0].padStart(2, '0'),
+                m: parts[1].padStart(2, '0'),
+                y: y
+            };
+        }
+    }
+
+    // รูปแบบ YYYY-MM-DD (ไม่มี T)
+    if (str.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+        const parts = str.split('-');
+        return {
+            d: parts[2].padStart(2, '0'),
+            m: parts[1].padStart(2, '0'),
+            y: parts[0]
+        };
+    }
+
+    return { d: "", m: "", y: "" };
+}
+
+// หา index ของคอลัมน์จากชื่อใน headers (รองรับหลายคีย์เวิร์ด)
+function findColumnIndex(headers, keywords, fallback) {
+    if (!headers || !Array.isArray(headers)) return fallback;
+    for (let i = 0; i < headers.length; i++) {
+        const h = (headers[i] || "").toString().toLowerCase();
+        for (const kw of keywords) {
+            if (h.includes(kw.toLowerCase())) return i;
+        }
+    }
+    return fallback;
+}
+
 // --- Initialize Functions ---
 document.addEventListener('DOMContentLoaded', () => {
     // 1. ถ้าไม่ได้ใส่ API URL ให้แสดง Mock Data ไปก่อน
@@ -89,9 +165,9 @@ function processRealData(summary, details) {
 
     // กรองบรรทัดข้อมูลจริง (ตัดหัวคอลัมน์ออก และเอาเฉพาะบรรทัดที่มีชื่อบริษัท)
     const companyRows = summary.data.slice(1).filter(row => row[0] && row[0].toString().trim() !== "");
-    
+
     const companyCount = companyRows.length;
-    
+
     // คำนวณเครดิตเฉลี่ย
     let totalCredit = 0;
     let validCreditCount = 0;
@@ -116,9 +192,9 @@ function processRealData(summary, details) {
     const companyList = companyRows.map(row => `${row[0]}`);
     const jobList = companyRows.map(row => `${row[1]}`);
     const creditList = companyRows.map(row => `${row[2]} วัน`);
-    const limitList = companyRows.map(row => `${formatMoney(parseFloat(row[3])||0)}`);
-    const usedList = companyRows.map(row => `${formatMoney(parseFloat(row[4])||0)}`);
-    const remainList = companyRows.map(row => `${formatMoney(parseFloat(row[5])||0)}`);
+    const limitList = companyRows.map(row => `${formatMoney(parseFloat(row[3]) || 0)}`);
+    const usedList = companyRows.map(row => `${formatMoney(parseFloat(row[4]) || 0)}`);
+    const remainList = companyRows.map(row => `${formatMoney(parseFloat(row[5]) || 0)}`);
 
     // อัปเดตข้อมูลกล่อง
     KPI_DATA[0].amount = "รวม " + companyCount + " บริษัท";
@@ -138,13 +214,13 @@ function processRealData(summary, details) {
 
     KPI_DATA[5].amount = formatMoney(totalRemainingRaw);
     KPI_DATA[5].list = remainList;
-    
+
     // คำนวณวงเงินที่ใช้ได้ (F - E) แถวบนสุด
     const usableCredit = totalRemainingRaw - totalUsedRaw;
     const usableCreditEl = document.getElementById('usable-credit-amount');
     if (usableCreditEl) {
         usableCreditEl.textContent = formatMoney(usableCredit);
-        
+
         // ถ้าวงเงินติดลบ ให้เปลี่ยนสีเป็นสีแดงเพื่อเตือน
         if (usableCredit < 0) {
             usableCreditEl.classList.remove('text-slate-800');
@@ -154,14 +230,8 @@ function processRealData(summary, details) {
             usableCreditEl.classList.add('text-slate-800');
         }
     }
-    
-    renderKPIs(KPI_DATA);
 
-// ฟังก์ชันล้างชื่อบริษัท (ตัดช่องว่างออกทั้งหมด และทำเป็นพิมพ์เล็ก) เพื่อให้เปรียบเทียบกันได้เป๊ะ 100%
-function normalizeName(name) {
-    if (!name) return "";
-    return name.toString().toLowerCase().replace(/\s+/g, "");
-}
+    renderKPIs(KPI_DATA);
 
     // --- 2. อัปเดตกราฟ (Charts) จากตาราง ชื่อลูกหนี้ (8 บริษัทหลัก) ---
     // เก็บค่าวงเงินไว้ใช้ตอน Filter ด้วย
@@ -188,6 +258,16 @@ function normalizeName(name) {
     // เก็บข้อมูล Data1 ไว้สำหรับ Filter
     if (details && details.data) {
         RAW_DATA1 = details.data;
+
+        // ค้นหา index ของคอลัมน์อัตโนมัติจาก headers (ถ้าหาไม่เจอใช้ default)
+        if (details.headers && details.headers.length > 0) {
+            DATA1_COL.date = findColumnIndex(details.headers, ['วันที่', 'date', 'วัน'], 1);
+            DATA1_COL.debtor = findColumnIndex(details.headers, ['ลูกหนี้', 'ลูกค้า', 'บริษัท', 'debtor', 'customer'], 8);
+            DATA1_COL.used = findColumnIndex(details.headers, ['90%', 'รับซื้อ', 'ยอดที่ใช้'], 14);
+            DATA1_COL.remain = findColumnIndex(details.headers, ['10%', 'คงเหลือ', 'remain'], 16);
+            console.log('🔍 ตรวจพบคอลัมน์:', DATA1_COL, 'จาก headers:', details.headers);
+        }
+
         populateFilters(RAW_DATA1);
     }
 
@@ -252,56 +332,53 @@ function populateFilters(data) {
     const yearSet = new Set();
     const debtorSet = new Set();
 
+    let parsedCount = 0;
+    let skippedCount = 0;
+
     data.forEach(row => {
         if (!row) return;
-        
-        // คอลัมน์ B (Index 1) คือวันที่
-        if (row[1]) {
-            const dateStr = row[1].toString();
-            let d, m, y;
 
-            // ตรวจสอบว่าเป็นรูปแบบ ISO (เช่น 2026-01-14...) หรือไม่
-            if (dateStr.includes('-') && dateStr.includes('T')) {
-                const dateObj = new Date(dateStr);
-                if (!isNaN(dateObj)) {
-                    d = dateObj.getDate().toString().padStart(2, '0');
-                    m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                    y = dateObj.getFullYear().toString();
-                }
-            } else if (dateStr.includes('/')) {
-                // รูปแบบ DD/MM/YYYY
-                const parts = dateStr.split('/');
-                if (parts.length === 3) {
-                    d = parts[0].padStart(2, '0');
-                    m = parts[1].padStart(2, '0');
-                    y = parts[2];
-                }
-            }
-
+        // คอลัมน์วันที่ (auto-detected)
+        const dateVal = row[DATA1_COL.date];
+        if (dateVal) {
+            const { d, m, y } = parseDateParts(dateVal);
             if (d && m && y) {
                 daySet.add(d);
                 monthSet.add(m);
                 yearSet.add(y);
+                parsedCount++;
+            } else {
+                skippedCount++;
             }
         }
-        
-        // คอลัมน์ I (Index 8) คือ ลูกหนี้
-        if (row[8] && row[8] !== "ลูกหนี้" && row[8] !== "") {
-            debtorSet.add(row[8].toString());
+
+        // คอลัมน์ลูกหนี้ (auto-detected)
+        const debtorVal = row[DATA1_COL.debtor];
+        if (debtorVal && debtorVal.toString().trim() !== "" &&
+            debtorVal.toString().toLowerCase() !== "ลูกหนี้") {
+            debtorSet.add(debtorVal.toString().trim());
         }
     });
 
-    const populateSelect = (id, set) => {
+    console.log(`📅 อ่านวันที่ได้: ${parsedCount} แถว, ข้าม: ${skippedCount} แถว`);
+    console.log(`👥 พบลูกหนี้: ${debtorSet.size} ราย`);
+
+    const populateSelect = (id, set, sortNumeric = false) => {
         const select = document.getElementById(id);
         if (!select) return;
-        
+
         // เก็บ option แรกไว้ (ทั้งหมด)
         const firstOption = select.options[0];
         select.innerHTML = '';
         select.appendChild(firstOption);
-        
+
         // เรียงลำดับและเพิ่มเข้าไป
-        Array.from(set).sort().forEach(val => {
+        const sorted = Array.from(set).sort((a, b) => {
+            if (sortNumeric) return parseInt(a) - parseInt(b);
+            return a.localeCompare(b, 'th');
+        });
+
+        sorted.forEach(val => {
             const opt = document.createElement('option');
             opt.value = val;
             opt.textContent = val;
@@ -309,11 +386,11 @@ function populateFilters(data) {
         });
     };
 
-    populateSelect('filter-day', daySet);
-    populateSelect('filter-month', monthSet);
-    populateSelect('filter-year', yearSet);
+    populateSelect('filter-day', daySet, true);
+    populateSelect('filter-month', monthSet, true);
+    populateSelect('filter-year', yearSet, true);
     populateSelect('filter-debtor', debtorSet);
-    
+
     // ผูก Event Listener
     ['filter-day', 'filter-month', 'filter-year', 'filter-debtor'].forEach(id => {
         const el = document.getElementById(id);
@@ -340,89 +417,81 @@ function applyFilters() {
     const year = document.getElementById('filter-year')?.value;
     const debtor = document.getElementById('filter-debtor')?.value;
 
-    // --- จุดสำคัญ: ถ้าเลือก "ทั้งหมด" ทุกช่อง ให้เอากราฟสรุปผลตั้งต้นกลับมาแสดงทันที ---
+    console.log('🔎 กำลังกรอง:', { day, month, year, debtor });
+
+    // --- ถ้าเลือก "ทั้งหมด" ทุกช่อง ให้เอากราฟสรุปผลตั้งต้นกลับมาแสดงทันที ---
     if (!day && !month && !year && !debtor) {
+        console.log('↩️ คืนค่ากราฟตั้งต้น');
         renderCharts(INITIAL_CHART_DATA);
         return;
     }
 
     const filteredData = RAW_DATA1.filter(row => {
         if (!row) return false;
-        
-        let matchDay = true, matchMonth = true, matchYear = true, matchDebtor = true;
-        
+
+        // กรองวันที่
         if (day || month || year) {
-            const dateStr = row[1] ? row[1].toString().trim() : '';
-            let d = "", m = "", y = "";
+            const { d, m, y } = parseDateParts(row[DATA1_COL.date]);
 
-            if (dateStr.includes('-') && dateStr.includes('T')) {
-                // ต้องใช้ new Date() แบบเดียวกับตอนสร้าง Dropdown เพื่อป้องกันปัญหา Timezone (GMT)
-                const dateObj = new Date(dateStr);
-                if (!isNaN(dateObj)) {
-                    d = dateObj.getDate().toString().padStart(2, '0');
-                    m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-                    y = dateObj.getFullYear().toString();
-                }
-            } else if (dateStr.includes('/')) {
-                // รองรับ DD/MM/YYYY
-                const parts = dateStr.split('/');
-                if (parts.length === 3) {
-                    d = parts[0].padStart(2, '0');
-                    m = parts[1].padStart(2, '0');
-                    y = parts[2];
-                }
-            }
+            // ถ้าอ่านวันที่ไม่ได้ → ตัดออกเลย
+            if (!d || !m || !y) return false;
 
-            // ตรวจสอบเงื่อนไขการกรอง (ถ้าไม่ได้เลือกค่านั้นๆ ให้ถือว่าผ่าน)
-            if (day && d !== day.padStart(2, '0')) matchDay = false;
-            if (month && m !== month.padStart(2, '0')) matchMonth = false;
-            if (year && y !== year) matchYear = false;
-            
-            // ถ้าข้อมูลวันที่อ่านไม่ได้เลย แต่มีการสั่งกรอง ให้กรองออก
-            if (!d && !m && !y && (day || month || year)) {
-                matchDay = false;
-            }
+            if (day && d !== day.padStart(2, '0')) return false;
+            if (month && m !== month.padStart(2, '0')) return false;
+            if (year && y !== year) return false;
         }
-        
+
+        // กรองลูกหนี้
         if (debtor) {
-            const rowDebtor = row[8] ? row[8].toString() : '';
-            if (rowDebtor !== debtor) matchDebtor = false;
+            const rowDebtor = row[DATA1_COL.debtor] ? row[DATA1_COL.debtor].toString().trim() : '';
+            if (rowDebtor !== debtor) return false;
         }
-        
-        return matchDay && matchMonth && matchYear && matchDebtor;
+
+        return true;
     });
 
+    console.log(`✅ กรองแล้วเหลือ ${filteredData.length} แถว จากทั้งหมด ${RAW_DATA1.length} แถว`);
     updateChartsWithData(filteredData);
 }
 
 function updateChartsWithData(dataList) {
     const companyMap = {};
-    
+
     // ตั้งต้นด้วย 8 บริษัทหลักจาก SUMMARY_MAP
     Object.keys(SUMMARY_MAP).forEach(normKey => {
-        companyMap[normKey] = { 
-            name: SUMMARY_MAP[normKey].originalName, // เก็บชื่อดั้งเดิมไว้แสดงผล
-            limit: SUMMARY_MAP[normKey].limit, 
-            used: 0, 
-            remain: 0 
+        companyMap[normKey] = {
+            name: SUMMARY_MAP[normKey].originalName,
+            limit: SUMMARY_MAP[normKey].limit,
+            used: 0,
+            remain: 0
         };
     });
 
+    let matchedRows = 0;
+    let unmatchedDebtors = new Set();
+
     // นำข้อมูลที่กรองแล้วจาก Data1 มาบวกสะสม
     dataList.forEach(row => {
-        if (!row || !row[8]) return;
-        const normCompany = normalizeName(row[8]);
-        
-        // ถ้าเป็น 1 ใน 8 บริษัทหลัก
+        if (!row || !row[DATA1_COL.debtor]) return;
+        const normCompany = normalizeName(row[DATA1_COL.debtor]);
+
+        // ถ้าเป็น 1 ใน 8 บริษัทหลัก → บวกสะสม
         if (companyMap[normCompany]) {
-            // ใช้คอลัมน์ O (14) = ยอดรับซื้อ 90% และ Q (16) = ยอดคงเหลือ 10%
-            const purchase90 = parseNumber(row[14]);
-            const remain10 = parseNumber(row[16]);
-            
-            companyMap[normCompany].used += purchase90;
-            companyMap[normCompany].remain += remain10;
+            const usedVal = parseNumber(row[DATA1_COL.used]);
+            const remainVal = parseNumber(row[DATA1_COL.remain]);
+
+            companyMap[normCompany].used += usedVal;
+            companyMap[normCompany].remain += remainVal;
+            matchedRows++;
+        } else {
+            unmatchedDebtors.add(row[DATA1_COL.debtor].toString().trim());
         }
     });
+
+    console.log(`📊 จับคู่บริษัทได้ ${matchedRows} แถว`);
+    if (unmatchedDebtors.size > 0) {
+        console.warn('⚠️ มีลูกหนี้ที่จับคู่ไม่ได้ (ไม่อยู่ใน 8 บริษัทหลัก):', Array.from(unmatchedDebtors));
+    }
 
     const chartData = Object.keys(companyMap).map(key => ({
         name: companyMap[key].name,
@@ -431,6 +500,7 @@ function updateChartsWithData(dataList) {
         remain: companyMap[key].remain
     }));
 
+    console.log('📈 ข้อมูลที่จะวาดกราฟ:', chartData);
     renderCharts(chartData);
 }
 
@@ -445,99 +515,121 @@ function renderCharts(companyData = []) {
     // 1. กราฟเปรียบเทียบ วงเงิน VS ยอดที่ใช้ไป
     const ctxComp = document.getElementById('comparisonChart');
     if (ctxComp) {
-        if (compChartInstance) compChartInstance.destroy();
-        compChartInstance = new Chart(ctxComp.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: companyData.map(d => d.name),
-                datasets: [
-                    {
-                        label: 'วงเงินแต่ละหน้างาน',
-                        data: companyData.map(d => d.limit),
-                        backgroundColor: '#6366f1', // indigo-500
-                        borderRadius: 4
+        if (compChartInstance) {
+            // อัปเดตข้อมูลและให้ Chart.js ทำแอนิเมชันให้
+            compChartInstance.data.labels = companyData.map(d => d.name);
+            compChartInstance.data.datasets[0].data = companyData.map(d => d.limit);
+            compChartInstance.data.datasets[1].data = companyData.map(d => d.used);
+            compChartInstance.update();
+        } else {
+            compChartInstance = new Chart(ctxComp.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: companyData.map(d => d.name),
+                    datasets: [
+                        {
+                            label: 'วงเงินแต่ละหน้างาน',
+                            data: companyData.map(d => d.limit),
+                            backgroundColor: '#6366f1', // indigo-500
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'ยอดที่ใช้ไป',
+                            data: companyData.map(d => d.used),
+                            backgroundColor: '#f43f5e', // rose-500
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 800,
+                        easing: 'easeOutQuart'
                     },
-                    {
-                        label: 'ยอดที่ใช้ไป',
-                        data: companyData.map(d => d.used),
-                        backgroundColor: '#f43f5e', // rose-500
-                        borderRadius: 4
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let value = context.raw || 0;
-                                return context.dataset.label + ': ฿' + value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let value = context.raw || 0;
+                                    return context.dataset.label + ': ฿' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) { return '฿' + (value / 1000000).toLocaleString() + 'M'; }
                             }
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) { return '฿' + (value / 1000000).toLocaleString() + 'M'; }
-                        }
-                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     // 2. กราฟเปรียบเทียบ ยอดที่ใช้ไป VS วงเงินคงเหลือ
     const ctxTrend = document.getElementById('trendChart');
     if (ctxTrend) {
-        if (trendChartInstance) trendChartInstance.destroy();
-        trendChartInstance = new Chart(ctxTrend.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: companyData.map(d => d.name),
-                datasets: [
-                    {
-                        label: 'ยอดที่ใช้ไป',
-                        data: companyData.map(d => d.used),
-                        backgroundColor: '#f43f5e', // rose-500
-                        borderRadius: 4
+        if (trendChartInstance) {
+            // อัปเดตข้อมูลและให้ Chart.js ทำแอนิเมชันให้
+            trendChartInstance.data.labels = companyData.map(d => d.name);
+            trendChartInstance.data.datasets[0].data = companyData.map(d => d.used);
+            trendChartInstance.data.datasets[1].data = companyData.map(d => d.remain);
+            trendChartInstance.update();
+        } else {
+            trendChartInstance = new Chart(ctxTrend.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: companyData.map(d => d.name),
+                    datasets: [
+                        {
+                            label: 'ยอดที่ใช้ไป',
+                            data: companyData.map(d => d.used),
+                            backgroundColor: '#f43f5e', // rose-500
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'วงเงินคงเหลือ',
+                            data: companyData.map(d => d.remain),
+                            backgroundColor: '#10b981', // emerald-500
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 800,
+                        easing: 'easeOutQuart'
                     },
-                    {
-                        label: 'วงเงินคงเหลือ',
-                        data: companyData.map(d => d.remain),
-                        backgroundColor: '#10b981', // emerald-500
-                        borderRadius: 4
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let value = context.raw || 0;
-                                return context.dataset.label + ': ฿' + value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let value = context.raw || 0;
+                                    return context.dataset.label + ': ฿' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) { return '฿' + (value / 1000000).toLocaleString() + 'M'; }
                             }
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) { return '฿' + (value / 1000000).toLocaleString() + 'M'; }
-                        }
-                    }
                 }
-            }
-        });
+            });
+        }
     }
 }
 
