@@ -299,7 +299,7 @@ function renderKPIs(data = KPI_DATA) {
             listHtml = `
             <div class="mt-4 border-t border-slate-100 pt-3 space-y-1.5">
                 ${kpi.list.map(item => `
-                    <div class="text-sm leading-tight font-bold text-slate-800 bg-slate-50 px-2 py-2 rounded-lg border-l-4 ${borderColorClass} shadow-sm hover:bg-slate-100 transition-colors break-words" title="${item}">
+                    <div class="text-base font-bold text-slate-800 bg-slate-50 px-3 py-2.5 rounded-lg border-l-4 ${borderColorClass} shadow-sm hover:bg-slate-100 transition-colors whitespace-nowrap overflow-hidden overflow-ellipsis" title="${item}">
                         ${item}
                     </div>
                 `).join('')}
@@ -308,16 +308,16 @@ function renderKPIs(data = KPI_DATA) {
         }
 
         html += `
-        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex flex-col hover:shadow-md transition-shadow overflow-hidden">
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 flex flex-col hover:shadow-md transition-shadow overflow-hidden">
             <div class="flex items-center space-x-2">
-                <div class="p-1.5 rounded-lg ${kpi.bg} ${kpi.color} shrink-0">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="p-2 rounded-lg ${kpi.bg} ${kpi.color} shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                     </svg>
                 </div>
-                <h3 class="text-slate-500 font-bold text-xs leading-tight uppercase truncate" title="${kpi.title}">${kpi.title}</h3>
+                <h3 class="text-slate-500 font-bold text-sm leading-tight uppercase truncate" title="${kpi.title}">${kpi.title}</h3>
             </div>
-            <p class="text-2xl font-black text-slate-800 mt-2 truncate" title="${kpi.amount}">${kpi.amount}</p>
+            <p class="text-xl font-black text-slate-800 mt-3 whitespace-nowrap overflow-hidden" title="${kpi.amount}">${kpi.amount}</p>
             ${listHtml}
         </div>
         `;
@@ -512,6 +512,11 @@ function renderCharts(companyData = []) {
     Chart.defaults.font.family = "'Prompt', sans-serif";
     Chart.defaults.color = '#64748b';
 
+    // Register datalabels plugin (แสดงตัวเลขบนแท่งกราฟ)
+    if (typeof ChartDataLabels !== 'undefined') {
+        Chart.register(ChartDataLabels);
+    }
+
     // 1. กราฟเปรียบเทียบ วงเงิน VS ยอดที่ใช้ไป
     const ctxComp = document.getElementById('comparisonChart');
     if (ctxComp) {
@@ -556,6 +561,17 @@ function renderCharts(companyData = []) {
                                     let value = context.raw || 0;
                                     return context.dataset.label + ': ฿' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                 }
+                            }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 2,
+                            color: '#334155',
+                            font: { size: 10, weight: 'bold' },
+                            formatter: function(value) {
+                                if (!value || value === 0) return '';
+                                return (value / 1000000).toFixed(1) + 'M';
                             }
                         }
                     },
@@ -616,6 +632,17 @@ function renderCharts(companyData = []) {
                                     let value = context.raw || 0;
                                     return context.dataset.label + ': ฿' + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                 }
+                            }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 2,
+                            color: '#334155',
+                            font: { size: 10, weight: 'bold' },
+                            formatter: function(value) {
+                                if (!value || value === 0) return '';
+                                return (value / 1000000).toFixed(1) + 'M';
                             }
                         }
                     },
