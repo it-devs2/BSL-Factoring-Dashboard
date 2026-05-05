@@ -18,12 +18,17 @@ const KPI_DATA = [
 
 const API_URL = "https://script.google.com/macros/s/AKfycby2-H9fuh0eGdD0OurjJeqGOuo343puWMmcHERVz787V_hVZo1_Wv8HXLKfI7HC8BrJ/exec";
 
+// Mapping คอลัมน์สำหรับ Data 1
 let DATA1_COL = {
-    date: 1,      // คอลัมน์ B - วันที่เบิกเงิน
-    dueDate: 2,   // คอลัมน์ C - วันครบกำหนด
-    debtor: 8,    // คอลัมน์ I - ชื่อลูกหนี้
-    used: 15,     // คอลัมน์ P - ยอดเบิกเงิน (ยอดรับซื้อ)
-    remain: 16    // คอลัมน์ Q - วงเงินคงเหลือ
+    date: 1,      // B - วันที่เบิกเงิน
+    dueDate: 2,   // C - วันครบกำหนด
+    invoice: 5,   // F - เลขที่ IV
+    bank: 6,      // G - ธนาคาร
+    jobType: 7,   // H - ประเภทงาน
+    debtor: 8,    // I - ชื่อลูกหนี้
+    bill: 13,     // N - จำนวนเงิน (หน้าตั๋ว)
+    used: 15,     // P - ยอดเบิกเงิน (ยอดรับซื้อ)
+    remain: 16    // Q - ยอดคงเหลือรับ 10%
 };
 
 // --- Top Loading Bar ---
@@ -164,32 +169,46 @@ function processRealData(summary, details) {
         RAW_DATA1 = details.data;
         DATA1_COL.debtor = findColumnIndex(details.headers, ['ลูกหนี้', 'ลูกค้า', 'บริษัท'], 8);
         
-        const buildInitial = (col) => {
+        const buildInitial = (dateCol, valCol1, valCol2) => {
             const map = {};
+            let grandTotal1 = 0;
+            let grandTotal2 = 0;
             Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, limit: SUMMARY_MAP[k].limit, used: 0, remain: 0 });
             RAW_DATA1.forEach((row, idx) => {
                 if (idx === 0 || !row[DATA1_COL.debtor]) return;
                 const norm = normalizeName(row[DATA1_COL.debtor]);
+                const v1 = parseNumber(row[valCol1]);
+                const v2 = parseNumber(row[valCol2]);
+                grandTotal1 += v1;
+                grandTotal2 += v2;
                 if (map[norm]) {
-                    map[norm].used += parseNumber(row[DATA1_COL.used]);
-                    map[norm].remain += parseNumber(row[DATA1_COL.remain]);
+                    map[norm].used += v1;
+                    map[norm].remain += v2;
                 }
             });
-            return Object.values(map);
+            return { list: Object.values(map), t1: grandTotal1, t2: grandTotal2 };
         };
 
-        INITIAL_CHART_DATA.chart1 = buildInitial(DATA1_COL.date);
-        INITIAL_CHART_DATA.chart2 = buildInitial(DATA1_COL.dueDate);
+        const res1 = buildInitial(DATA1_COL.date, DATA1_COL.used, DATA1_COL.used);
+        const res2 = buildInitial(DATA1_COL.dueDate, DATA1_COL.bill, DATA1_COL.remain);
+        
+        INITIAL_CHART_DATA.chart1 = res1.list;
+        INITIAL_CHART_DATA.chart2 = res2.list;
+        INITIAL_CHART_DATA.chart2TotalN = res2.t1;
+        INITIAL_CHART_DATA.chart2TotalQ = res2.t2;
+
+        const elN = document.getElementById('total-due-n');
+        const elQ = document.getElementById('total-remain-q');
+        if (elN) elN.textContent = formatMoney(INITIAL_CHART_DATA.chart2TotalN);
+        if (elQ) elQ.textContent = formatMoney(INITIAL_CHART_DATA.chart2TotalQ);
 
         updateChart1(INITIAL_CHART_DATA.chart1);
         updateChart2(INITIAL_CHART_DATA.chart2);
+        
+        // กรองและแสดงตารางครั้งแรก
         populateFilters(RAW_DATA1);
+        applyTableFilter(); 
     }
-
-    renderTable(companyRows.map(r => ({
-        col1: r[0], col2: r[1], col3: r[2],
-        col4: formatMoney(parseNumber(r[3])), col5: formatMoney(parseNumber(r[4])), col6: formatMoney(parseNumber(r[5]))
-    })));
 }
 
 function renderKPIs(data) {
@@ -211,20 +230,39 @@ function renderKPIs(data) {
 function populateFilters(data) {
     const m1Set = new Set(), y1Set = new Set();
     const d2Set = new Set(), m2Set = new Set(), y2Set = new Set();
+    const tmSet = new Set(), tySet = new Set(); // สำหรับตาราง
+
     data.forEach((row, idx) => {
+        if (idx === 0) return;
         const p1 = parseDateParts(row[DATA1_COL.date]); if (p1.m && p1.y) { m1Set.add(p1.m); y1Set.add(p1.y); }
-        const p2 = parseDateParts(row[DATA1_COL.dueDate]); if (p2.d && p2.m && p2.y) { d2Set.add(p2.d); m2Set.add(p2.m); y2Set.add(p2.y); }
+        const p2 = parseDateParts(row[DATA1_COL.dueDate]); 
+        if (p2.d && p2.m && p2.y) { 
+            d2Set.add(p2.d); m2Set.add(p2.m); y2Set.add(p2.y); 
+            tmSet.add(p2.m); tySet.add(p2.y); // ตารางใช้คอลัมน์ C (วันครบกำหนด)
+        }
     });
+
+    const THAI_MONTHS = {
+        '01': 'มกราคม', '02': 'กุมภาพันธ์', '03': 'มีนาคม', '04': 'เมษายน',
+        '05': 'พฤษภาคม', '06': 'มิถุนายน', '07': 'กรกฎาคม', '08': 'สิงหาคม',
+        '09': 'กันยายน', '10': 'ตุลาคม', '11': 'พฤศจิกายน', '12': 'ธันวาคม'
+    };
 
     const fill = (id, set, handler) => {
         const el = document.getElementById(id); if (!el) return;
         const first = el.options[0]; el.innerHTML = ''; el.appendChild(first);
-        Array.from(set).sort().forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.textContent = v; el.appendChild(opt); });
+        Array.from(set).sort().forEach(v => { 
+            const opt = document.createElement('option'); 
+            opt.value = v; 
+            opt.textContent = (id.includes('month') && THAI_MONTHS[v]) ? THAI_MONTHS[v] : v; 
+            el.appendChild(opt); 
+        });
         el.addEventListener('change', handler);
     };
 
     fill('f1-month', m1Set, applyFilter1); fill('f1-year', y1Set, applyFilter1);
     fill('f2-day', d2Set, applyFilter2); fill('f2-month', m2Set, applyFilter2); fill('f2-year', y2Set, applyFilter2);
+    fill('table-filter-month', tmSet, applyTableFilter); fill('table-filter-year', tySet, applyTableFilter);
 }
 
 function applyFilter1() {
@@ -249,50 +287,103 @@ function applyFilter2() {
     const d = document.getElementById('f2-day').value;
     const m = document.getElementById('f2-month').value;
     const y = document.getElementById('f2-year').value;
-    if (!d && !m && !y) { updateChart2(INITIAL_CHART_DATA.chart2); return; }
     
-    const map = {};
-    Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, used: 0, remain: 0 });
+    let chartData = [];
+    let totalN = 0;
+    let totalQ = 0;
+
+    if (!d && !m && !y) { 
+        chartData = INITIAL_CHART_DATA.chart2; 
+        totalN = INITIAL_CHART_DATA.chart2TotalN || 0;
+        totalQ = INITIAL_CHART_DATA.chart2TotalQ || 0;
+    } else {
+        const map = {};
+        Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, used: 0, remain: 0 });
+        RAW_DATA1.forEach((row, idx) => {
+            if (idx === 0) return;
+            const p = parseDateParts(row[DATA1_COL.dueDate]);
+            if ((!d || p.d === d.padStart(2, '0')) && (!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
+                const norm = normalizeName(row[DATA1_COL.debtor]);
+                const valN = parseNumber(row[DATA1_COL.bill]);
+                const valQ = parseNumber(row[DATA1_COL.remain]);
+                totalN += valN; totalQ += valQ;
+                if (map[norm]) { map[norm].used += valN; map[norm].remain += valQ; }
+            }
+        });
+        chartData = Object.values(map).filter(c => c.used > 0 || c.remain > 0);
+    }
+    const elN = document.getElementById('total-due-n');
+    const elQ = document.getElementById('total-remain-q');
+    if (elN) elN.textContent = formatMoney(totalN);
+    if (elQ) elQ.textContent = formatMoney(totalQ);
+    updateChart2(chartData);
+}
+
+// ฟังก์ชันใหม่สำหรับตารางรายย่อย
+function applyTableFilter() {
+    const m = document.getElementById('table-filter-month').value;
+    const y = document.getElementById('table-filter-year').value;
+    
+    let filtered = [];
+    let totalAmount = 0;
+
     RAW_DATA1.forEach((row, idx) => {
         if (idx === 0) return;
         const p = parseDateParts(row[DATA1_COL.dueDate]);
-        if ((!d || p.d === d.padStart(2, '0')) && (!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
-            const norm = normalizeName(row[DATA1_COL.debtor]);
-            if (map[norm]) {
-                map[norm].used += parseNumber(row[DATA1_COL.used]);
-                map[norm].remain += parseNumber(row[DATA1_COL.remain]);
+        if ((!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
+            const amt = parseNumber(row[DATA1_COL.bill]);
+            totalAmount += amt;
+            
+            // แปลงวันที่ให้อ่านง่ายและสั้นลง (DD/MM/YYYY)
+            let shortDate = row[DATA1_COL.dueDate];
+            if (p.d && p.m && p.y) {
+                shortDate = `${p.d}/${p.m}/${p.y}`;
             }
+
+            filtered.push({
+                c: shortDate,
+                f: row[DATA1_COL.invoice],
+                g: row[DATA1_COL.bank],
+                h: row[DATA1_COL.jobType],
+                i: row[DATA1_COL.debtor],
+                n: amt,
+                _dateVal: (p.y && p.m && p.d) ? parseInt(p.y + p.m + p.d, 10) : 0
+            });
         }
     });
-    updateChart2(Object.values(map).filter(c => c.used > 0 || c.remain > 0));
+
+    // เรียงลำดับจากวันที่ น้อยไปมาก (เก่าสุด -> ล่าสุด)
+    filtered.sort((a, b) => a._dateVal - b._dateVal);
+
+    renderTable(filtered);
+    const totalEl = document.getElementById('table-total-amount');
+    if (totalEl) totalEl.textContent = formatMoney(totalAmount);
+
+    // อัปเดตข้อความบนหัวกระดาษ (PDF Subtitle) ให้ตรงกับเดือน/ปีที่เลือก
+    const mSelect = document.getElementById('table-filter-month');
+    const ySelect = document.getElementById('table-filter-year');
+    let subText = '';
+    if (m || y) {
+        const mText = m ? mSelect.options[mSelect.selectedIndex].text : '';
+        const yText = y ? ySelect.options[ySelect.selectedIndex].text : '';
+        subText = `(ประจำเดือน ${mText} ${yText})`.replace('  ', ' ').trim();
+    }
+    const subEl = document.getElementById('pdf-subtitle');
+    if (subEl) subEl.textContent = subText;
 }
 
 let c1Inst = null, c2Inst = null;
 const commonOptions = {
     responsive: true, maintainAspectRatio: false,
-    layout: {
-        padding: {
-            top: 30 // เพิ่มพื้นที่ด้านบนสุดของพื้นที่กราฟ
-        }
-    },
+    layout: { padding: { top: 30 } },
     plugins: { 
         legend: { position: 'top' },
         datalabels: { 
-            anchor: 'end',
-            align: 'top',
-            offset: 4,
-            color: '#475569',
-            font: { weight: 'bold', size: 11 }, 
+            anchor: 'end', align: 'top', offset: 4, color: '#475569', font: { weight: 'bold', size: 11 }, 
             formatter: v => v > 0 ? (v/1000000).toFixed(1) + 'M' : '' 
         }
     },
-    scales: { 
-        y: { 
-            beginAtZero: true, 
-            grace: '15%', // เพิ่มพื้นที่ว่างด้านบน 15% ของค่าสูงสุดโดยอัตโนมัติ
-            ticks: { callback: v => '฿' + (v/1000000) + 'M' } 
-        } 
-    }
+    scales: { y: { beginAtZero: true, grace: '15%', ticks: { callback: v => '฿' + (v/1000000) + 'M' } } }
 };
 
 function updateChart1(data) {
@@ -317,8 +408,8 @@ function updateChart2(data) {
         data: {
             labels: data.map(x => x.name),
             datasets: [
-                { label: 'ยอดเบิก', data: data.map(x => x.used), backgroundColor: '#f43f5e' },
-                { label: 'วงเงินคงเหลือ', data: data.map(x => x.remain), backgroundColor: '#10b981' }
+                { label: 'ยอดที่ต้องชำระ (N)', data: data.map(x => x.used), backgroundColor: '#f43f5e' },
+                { label: 'ยอดคงเหลือรับ 10% (Q)', data: data.map(x => x.remain), backgroundColor: '#10b981' }
             ]
         },
         options: commonOptions
@@ -327,14 +418,27 @@ function updateChart2(data) {
 
 function renderTable(data) {
     const body = document.getElementById('table-body'); if (!body) return;
+    if (data.length === 0) {
+        body.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>`;
+        return;
+    }
+    
     body.innerHTML = data.map(r => `
-        <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-            <td class="p-4 font-medium text-slate-800">${r.col1}</td>
-            <td class="p-4 text-slate-600">${r.col2}</td>
-            <td class="p-4 text-right text-slate-600">${r.col3}</td>
-            <td class="p-4 text-right text-slate-600">${r.col4}</td>
-            <td class="p-4 text-right text-slate-600">${r.col5}</td>
-            <td class="p-4 text-right text-slate-600 font-medium text-amber-600">${r.col6}</td>
+        <tr class="border-b border-slate-300 hover:bg-slate-50 transition-colors group">
+            <td class="p-4 text-slate-500 font-medium border-r border-slate-300 break-words whitespace-normal">${r.c}</td>
+            <td class="p-4 font-bold text-slate-700 border-r border-slate-300 break-words whitespace-normal">${r.f}</td>
+            <td class="p-4 text-slate-600 border-r border-slate-300 break-words whitespace-normal">${r.g}</td>
+            <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.h}</td>
+            <td class="p-4 font-bold text-indigo-600 border-r border-slate-300 break-words whitespace-normal">${r.i}</td>
+            <td class="p-4 text-right font-black text-slate-800 break-words whitespace-normal">${formatMoney(r.n)}</td>
         </tr>
     `).join('');
+}
+
+function exportToPDF() {
+    // เปลี่ยนมาใช้ระบบ Print ของเบราว์เซอร์แทน เพื่อการจัดเรียงภาษาไทยที่สมบูรณ์ 100%
+    // และแก้ปัญหาตัวหนังสือซ้อนทับกันในตาราง
+    setTimeout(() => {
+        window.print();
+    }, 300);
 }

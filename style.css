@@ -23,3 +23,45 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8; 
 }
+
+/* PDF Export Adjustments via Browser Print */
+@media print {
+    /* ซ่อนทุกอย่างในหน้าจอ */
+    body * {
+        visibility: hidden;
+    }
+    /* แสดงเฉพาะส่วนที่ต้องการ Export */
+    #table-export-area, #table-export-area * {
+        visibility: visible;
+    }
+    /* ดึงพื้นที่ตารางมาไว้บนสุดของหน้ากระดาษ */
+    #table-export-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    /* ซ่อนปุ่มและตัวกรอง */
+    button, select, [data-html2canvas-ignore] {
+        display: none !important;
+    }
+    /* ตั้งค่ากระดาษ A4 แนวตั้ง */
+    @page {
+        size: A4 portrait;
+        margin: 15mm;
+    }
+    /* ป้องกันการตัดหน้ากลางตาราง */
+    tr {
+        page-break-inside: avoid !important;
+    }
+    table {
+        page-break-inside: auto;
+    }
+    thead {
+        display: table-header-group;
+    }
+}
