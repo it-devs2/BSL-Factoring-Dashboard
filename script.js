@@ -28,7 +28,10 @@ let DATA1_COL = {
     debtor: 8,    // I - ชื่อลูกหนี้
     bill: 13,     // N - จำนวนเงิน (หน้าตั๋ว)
     used: 15,     // P - ยอดเบิกเงิน (ยอดรับซื้อ)
-    remain: 16    // Q - ยอดคงเหลือรับ 10%
+    remain: 16,   // Q - ยอดคงเหลือรับ 10%
+    status: 17,   // R - สถานะ
+    note: 19,     // T - หมายเหตุ
+    payMonth: 21  // V - เดือนที่กำหนดชำระ
 };
 
 // --- Top Loading Bar ---
@@ -168,6 +171,8 @@ function processRealData(summary, details) {
     if (details && details.data) {
         DATA1_COL.debtor = findColumnIndex(details.headers, ['ลูกหนี้', 'ลูกค้า', 'บริษัท'], 8);
         DATA1_COL.status = findColumnIndex(details.headers, ['สถานะ'], 17);
+        DATA1_COL.note = findColumnIndex(details.headers, ['หมายเหตุ'], 19);
+        DATA1_COL.payMonth = findColumnIndex(details.headers, ['เดือนที่กำหนดชำระ', 'Payment Month'], 21);
         
         // กรองเฉพาะรายการที่สถานะเป็น Unpaid
         RAW_DATA1 = details.data.filter((row) => {
@@ -242,7 +247,10 @@ function populateFilters(data) {
         const p2 = parseDateParts(row[DATA1_COL.dueDate]); 
         if (p2.d && p2.m && p2.y) { 
             d2Set.add(p2.d); m2Set.add(p2.m); y2Set.add(p2.y); 
-            tmSet.add(p2.m); tySet.add(p2.y); // ตารางใช้คอลัมน์ C (วันครบกำหนด)
+        }
+        const pTable = parseDateParts(row[DATA1_COL.payMonth]);
+        if (pTable.m && pTable.y) {
+            tmSet.add(pTable.m); tySet.add(pTable.y);
         }
     });
 
@@ -330,15 +338,15 @@ function applyTableFilter() {
     let totalAmount = 0;
 
     RAW_DATA1.forEach((row) => {
-        const p = parseDateParts(row[DATA1_COL.dueDate]);
+        const p = parseDateParts(row[DATA1_COL.payMonth]);
+        const pDue = parseDateParts(row[DATA1_COL.dueDate]);
         if ((!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
             const amt = parseNumber(row[DATA1_COL.bill]);
             totalAmount += amt;
             
-            // แปลงวันที่ให้อ่านง่ายและสั้นลง (DD/MM/YYYY)
             let shortDate = row[DATA1_COL.dueDate];
-            if (p.d && p.m && p.y) {
-                shortDate = `${p.d}/${p.m}/${p.y}`;
+            if (pDue.d && pDue.m && pDue.y) {
+                shortDate = `${pDue.d}/${pDue.m}/${pDue.y}`;
             }
 
             filtered.push({
@@ -347,8 +355,10 @@ function applyTableFilter() {
                 g: row[DATA1_COL.bank],
                 h: row[DATA1_COL.jobType],
                 i: row[DATA1_COL.debtor],
+                s: row[DATA1_COL.status],
+                t: row[DATA1_COL.note],
                 n: amt,
-                _dateVal: (p.y && p.m && p.d) ? parseInt(p.y + p.m + p.d, 10) : 0
+                _dateVal: (pDue.y && pDue.m && pDue.d) ? parseInt(pDue.y + pDue.m + pDue.d, 10) : 0
             });
         }
     });
@@ -433,17 +443,19 @@ function updateChart2(data) {
 function renderTable(data) {
     const body = document.getElementById('table-body'); if (!body) return;
     if (data.length === 0) {
-        body.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>`;
+        body.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>`;
         return;
     }
     
     body.innerHTML = data.map(r => `
-        <tr class="border-b border-slate-300 hover:bg-slate-50 transition-colors group">
+        <tr class="border-b border-slate-300 hover:bg-slate-50 transition-colors group text-center">
             <td class="p-4 text-slate-500 font-medium border-r border-slate-300 break-words whitespace-normal">${r.c}</td>
             <td class="p-4 font-bold text-slate-700 border-r border-slate-300 break-words whitespace-normal">${r.f}</td>
-            <td class="p-4 text-slate-600 border-r border-slate-300 break-words whitespace-normal">${r.g}</td>
+            <td class="p-4 text-slate-600 border-r border-slate-300 break-words whitespace-normal text-left">${r.g}</td>
             <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.h}</td>
-            <td class="p-4 font-bold text-indigo-600 border-r border-slate-300 break-words whitespace-normal">${r.i}</td>
+            <td class="p-4 font-bold text-indigo-600 border-r border-slate-300 break-words whitespace-normal text-left">${r.i}</td>
+            <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.s || ''}</td>
+            <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.t || ''}</td>
             <td class="p-4 text-right font-black text-slate-800 break-words whitespace-normal">${formatMoney(r.n)}</td>
         </tr>
     `).join('');
