@@ -193,7 +193,13 @@ function processRealData(summary, details) {
 
     companyRows.forEach(row => {
         const norm = normalizeName(row[0]);
-        if (norm) SUMMARY_MAP[norm] = { originalName: row[0], limit: parseNumber(row[3]) };
+        if (norm) {
+            SUMMARY_MAP[norm] = { 
+                originalName: row[0], 
+                limit: parseNumber(row[3]),
+                used: parseNumber(row[4]) // คอลัมน์ E - วงเงินที่ใช้ไป (แหล่งข้อมูลที่ถูกต้องสำหรับกราฟแรก)
+            };
+        }
     });
 
     if (details && details.data) {
@@ -225,10 +231,15 @@ function processRealData(summary, details) {
             return { list: Object.values(map), t1: grandTotal1, t2: grandTotal2 };
         };
 
-        const res1 = buildInitial(DATA1_COL.date, DATA1_COL.used, DATA1_COL.used);
         const res2 = buildInitial(DATA1_COL.dueDate, DATA1_COL.bill, DATA1_COL.remain);
         
-        INITIAL_CHART_DATA.chart1 = res1.list;
+        // กราฟ 1: ดึงข้อมูลจาก SUMMARY_MAP (หน้าแรก คอลัมน์ E) โดยตรง เพื่อความถูกต้องสูงสุด
+        INITIAL_CHART_DATA.chart1 = Object.values(SUMMARY_MAP).map(s => ({
+            name: s.originalName,
+            limit: s.limit,
+            used: s.used
+        }));
+
         INITIAL_CHART_DATA.chart2 = res2.list;
         INITIAL_CHART_DATA.chart2TotalN = res2.t1;
         INITIAL_CHART_DATA.chart2TotalQ = res2.t2;
@@ -306,18 +317,30 @@ function populateFilters(data) {
 function applyFilter1() {
     const m = document.getElementById('f1-month').value;
     const y = document.getElementById('f1-year').value;
-    if (!m && !y) { updateChart1(INITIAL_CHART_DATA.chart1); return; }
     
+    // ถ้าไม่ได้เลือกตัวกรอง (ทั้งหมด) ให้แสดงข้อมูลจาก SUMMARY_MAP (หน้าแรก คอลัมน์ E)
+    if (!m && !y) {
+        updateChart1(INITIAL_CHART_DATA.chart1);
+        return;
+    }
+
     const map = {};
-    Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, limit: SUMMARY_MAP[k].limit, used: 0 });
+    Object.keys(SUMMARY_MAP).forEach(k => map[k] = { 
+        name: SUMMARY_MAP[k].originalName, 
+        limit: SUMMARY_MAP[k].limit, 
+        used: 0 
+    });
+    
     RAW_DATA1.forEach((row) => {
         const p = parseDateParts(row[DATA1_COL.date]);
         if ((!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
             const norm = normalizeName(row[DATA1_COL.debtor]);
-            if (map[norm]) map[norm].used += parseNumber(row[DATA1_COL.used]);
+            if (map[norm]) {
+                map[norm].used += parseNumber(row[DATA1_COL.used]);
+            }
         }
     });
-    updateChart1(Object.values(map).filter(c => c.used > 0));
+    updateChart1(Object.values(map));
 }
 
 function applyFilter2() {
@@ -376,20 +399,14 @@ function applyTableFilter() {
                 shortDate = `${pDue.d}/${pDue.m}/${pDue.y}`;
             }
 
-            // ฟอร์แมตเดือน/ปี สำหรับคอลัมน์ "ประจำเดือน" (ดึงจากคอลัมน์ V)
-            let payMonthDisplay = row[DATA1_COL.payMonth];
-            if (pV.m && pV.y) {
-                const shortMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-                const monthIdx = parseInt(pV.m, 10) - 1;
-                const shortYear = pV.y.slice(-2);
-                payMonthDisplay = `${shortMonths[monthIdx]}-${shortYear}`;
-            }
+            // ดึงข้อมูล "ประจำเดือน" จากคอลัมน์ H (jobType) ตามคำขอใหม่
+            const payMonthDisplay = row[DATA1_COL.jobType] || "";
 
             filtered.push({
                 c: shortDate,
                 f: row[DATA1_COL.invoice],
                 g: row[DATA1_COL.bank],   // รายละเอียด
-                h: payMonthDisplay,       // ประจำเดือน (ดึงจากคอลัมน์ V)
+                h: payMonthDisplay,       // ประจำเดือน (ดึงจากคอลัมน์ H)
                 i: row[DATA1_COL.debtor],
                 s: row[DATA1_COL.status],
                 t: row[DATA1_COL.note],
@@ -478,12 +495,22 @@ function updateChart2(data) {
 
 function renderTable(data) {
     const body = document.getElementById('table-body'); if (!body) return;
-    if (data.length === 0) {
+    const summaryContainer = document.getElementById('debtor-summary-container');
+    
+    // กรองเอาแถวที่เป็นหัวข้อ (ลูกหนี้) หรือแถวว่างออกก่อนประมวลผล
+    const validData = data.filter(r => {
+        const name = (r.i || "").trim();
+        return name && name !== "ลูกหนี้" && name !== "ชื่อลูกหนี้" && name !== "Debtor";
+    });
+
+    if (validData.length === 0) {
         body.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400 italic">ไม่พบข้อมูลในช่วงเวลาที่เลือก</td></tr>`;
+        if (summaryContainer) summaryContainer.innerHTML = '';
         return;
     }
     
-    body.innerHTML = data.map(r => `
+    // แสดงข้อมูลในตารางหลัก
+    body.innerHTML = validData.map(r => `
         <tr class="border-b border-slate-300 hover:bg-slate-50 transition-colors group text-center">
             <td class="p-4 text-slate-500 font-medium border-r border-slate-300 break-words whitespace-normal">${r.c}</td>
             <td class="p-4 font-bold text-slate-700 border-r border-slate-300 break-words whitespace-normal">${r.f}</td>
@@ -495,6 +522,43 @@ function renderTable(data) {
             <td class="p-4 text-right font-black text-slate-800 break-words whitespace-normal">${formatMoney(r.n)}</td>
         </tr>
     `).join('');
+
+    // คำนวณสรุปยอดตามลูกหนี้ (Debtor Summary Table)
+    if (summaryContainer) {
+        const debtorTotals = {};
+        let grandTotal = 0;
+        validData.forEach(r => {
+            const name = r.i;
+            debtorTotals[name] = (debtorTotals[name] || 0) + r.n;
+            grandTotal += r.n;
+        });
+
+        const summaryHtml = `
+            <table class="w-full border-collapse border border-slate-300 text-xs shadow-sm" style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                <thead>
+                    <tr class="bg-slate-100 font-bold text-slate-700">
+                        <th class="p-2 border border-slate-300 text-left">สรุปยอดแต่ละลูกหนี้</th>
+                        <th class="p-2 border border-slate-300 text-right">จำนวนเงิน</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${Object.entries(debtorTotals).map(([name, amt]) => `
+                        <tr>
+                            <td class="p-2 border border-slate-300 text-slate-600 font-medium">${name}</td>
+                            <td class="p-2 border border-slate-300 text-right font-bold text-slate-700">${formatMoney(amt)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr class="bg-indigo-50 font-black">
+                        <td class="p-2 border border-slate-300 text-indigo-700 uppercase tracking-wider">รวมรวมทั้งสิ้น</td>
+                        <td class="p-2 border border-slate-300 text-right text-indigo-700">${formatMoney(grandTotal)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+        summaryContainer.innerHTML = summaryHtml;
+    }
 }
 
 function exportToPDF() {
