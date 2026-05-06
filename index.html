@@ -21,8 +21,10 @@
 
     <!-- Top Loading Bar -->
     <div id="top-loader" class="fixed top-0 left-0 right-0 z-[9999] h-[3px] opacity-0 pointer-events-none">
-        <div id="top-loader-bar" class="h-full w-0 rounded-full" style="background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #f43f5e);"></div>
-        <div id="top-loader-glow" class="absolute top-0 right-0 h-full w-24 opacity-70" style="background: linear-gradient(90deg, transparent, #f43f5e);"></div>
+        <div id="top-loader-bar" class="h-full w-0 rounded-full"
+            style="background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #f43f5e);"></div>
+        <div id="top-loader-glow" class="absolute top-0 right-0 h-full w-24 opacity-70"
+            style="background: linear-gradient(90deg, transparent, #f43f5e);"></div>
     </div>
 
     <div class="max-w-[1600px] mx-auto space-y-6">
@@ -50,6 +52,18 @@
                         </p>
                     </div>
                 </div>
+
+                <!-- ปุ่มเข้าสู่ Google Sheets -->
+                <a href="https://docs.google.com/spreadsheets/d/10t3F86oixH13nxtO7VnzpaATvoI79rgI-bNgzCzoM1g/edit?gid=799940825#gid=799940825"
+                    target="_blank"
+                    class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all font-bold text-sm"
+                    data-html2canvas-ignore="true">
+                    <svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M14.5 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7.5L14.5 2zM15 19H9v-2h6v2zm0-4H9v-2h6v2zm0-4H9V9h6v2zm-1-2.5V3.5L18.5 8H14z" />
+                    </svg>
+                    Google Sheets
+                </a>
             </div>
         </div>
 
@@ -61,12 +75,15 @@
         <!-- Charts Row 1 -->
         <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h3 class="text-lg font-bold text-slate-800" id="chart1-title">กราฟเปรียบเทียบ วงเงิน vs ยอดที่ใช้ไป</h3>
+                <h3 class="text-lg font-bold text-slate-800" id="chart1-title">กราฟเปรียบเทียบ วงเงิน vs ยอดที่ใช้ไป
+                </h3>
                 <div class="flex gap-2">
-                    <select id="f1-month" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="f1-month"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">เดือน (ทั้งหมด)</option>
                     </select>
-                    <select id="f1-year" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="f1-year"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">ปี (ทั้งหมด)</option>
                     </select>
                 </div>
@@ -83,23 +100,29 @@
                     <h2 class="text-xl font-black text-slate-800">แสดงรายการที่ถึงกำหนดชำระ</h2>
                     <div class="flex gap-4">
                         <div class="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-100 rounded-lg">
-                            <span class="text-xs font-bold text-rose-600 uppercase tracking-wider">รวมเงินที่ต้องชำระ:</span>
+                            <span
+                                class="text-xs font-bold text-rose-600 uppercase tracking-wider">รวมเงินที่ต้องชำระ:</span>
                             <span class="text-sm font-black text-slate-800" id="total-due-n">฿0.00</span>
                         </div>
-                        <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg">
-                            <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">ยอดคงเหลือรับ 10%:</span>
+                        <div
+                            class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg">
+                            <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">ยอดคงเหลือรับ
+                                10%:</span>
                             <span class="text-sm font-black text-slate-800" id="total-remain-q">฿0.00</span>
                         </div>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <select id="f2-day" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="f2-day"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">วัน (ทั้งหมด)</option>
                     </select>
-                    <select id="f2-month" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="f2-month"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">เดือน (ทั้งหมด)</option>
                     </select>
-                    <select id="f2-year" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="f2-year"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">ปี (ทั้งหมด)</option>
                     </select>
                 </div>
@@ -110,50 +133,67 @@
         </div>
 
         <!-- รายการข้อมูลรายย่อย (Data 1) -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-12" id="table-export-area">
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-100 mb-12" id="table-export-area">
+            <!-- หัวกระดาษสำหรับรายงาน (Visible only in PDF/Print) -->
+            <div class="hidden print:block text-center mb-8 border-b-2 border-indigo-600 pb-6">
+                <h1 class="text-3xl font-black text-slate-800 tracking-tighter uppercase">BSL Factoring Dashboard</h1>
+                <p class="text-slate-400 text-xs font-bold mt-1 uppercase tracking-[0.3em]">Financial Report & Transaction Summary</p>
+            </div>
+
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-bold text-slate-800 uppercase tracking-wide">รายงานครบกำหนดชำระ <span id="pdf-subtitle" class="text-sm font-medium text-slate-500 ml-2"></span></h3>
+                    <h3 class="text-lg font-bold text-slate-800 uppercase tracking-wide">รายงานครบกำหนดชำระ <span
+                            id="pdf-subtitle" class="text-sm font-medium text-slate-500 ml-2"></span></h3>
                     <!-- ปุ่ม Export PDF เฉพาะตาราง -->
-                    <button data-html2canvas-ignore="true" onclick="exportToPDF()" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1 rounded-md flex items-center gap-1.5 transition-all font-bold text-[10px] uppercase tracking-wider border border-rose-100">
+                    <button data-html2canvas-ignore="true" onclick="exportToPDF()"
+                        class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1 rounded-md flex items-center gap-1.5 transition-all font-bold text-[10px] uppercase tracking-wider border border-rose-100">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
                         </svg>
                         Export PDF
                     </button>
                 </div>
                 <div class="flex gap-2" data-html2canvas-ignore="true">
-                    <select id="table-filter-month" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="table-filter-month"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">เดือน (ทั้งหมด)</option>
                     </select>
-                    <select id="table-filter-year" class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
+                    <select id="table-filter-year"
+                        class="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium focus:ring-2 focus:ring-indigo-500">
                         <option value="">ปี (ทั้งหมด)</option>
                     </select>
                 </div>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse border border-slate-300 table-fixed">
                     <colgroup>
                         <col style="width: 13%;"> <!-- วันที่ครบกำหนด -->
                         <col style="width: 13%;"> <!-- เลขที่ IV -->
-                        <col style="width: 15%;"> <!-- รายละเอียด -->
+                        <col style="width: 13%;"> <!-- รายละเอียด -->
                         <col style="width: 8%;">  <!-- ประจำเดือน -->
                         <col style="width: 14%;"> <!-- ลูกหนี้ -->
-                        <col style="width: 8%;">  <!-- สถานะ -->
+                        <col style="width: 10%;"> <!-- สถานะ -->
                         <col style="width: 14%;"> <!-- หมายเหตุ -->
                         <col style="width: 15%;"> <!-- จำนวนเงิน -->
                     </colgroup>
                     <thead>
-                        <tr class="bg-indigo-600 border-b border-indigo-700 text-white font-bold text-base tracking-wide text-center" style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                            <th class="p-4 border-r border-indigo-500">วันที่ครบกำหนด</th>
-                            <th class="p-4 border-r border-indigo-500">เลขที่ IV</th>
-                            <th class="p-4 border-r border-indigo-500">รายละเอียด</th>
-                            <th class="p-3 border-r border-indigo-500">ประจำเดือน</th>
-                            <th class="p-4 border-r border-indigo-500">ลูกหนี้</th>
-                            <th class="p-4 border-r border-indigo-500">สถานะ</th>
-                            <th class="p-4 border-r border-indigo-500">หมายเหตุ</th>
-                            <th class="p-4">จำนวนเงิน</th>
+                        <!-- แถวสำหรับเว้นระยะขอบบนในหน้า 2 เป็นต้นไป (Visible only in Print) -->
+                        <tr class="hidden print:table-row h-[15mm]">
+                            <th colspan="8" class="p-0 border-none bg-white"></th>
+                        </tr>
+                        <tr class="bg-indigo-600 border-b border-indigo-700 text-white font-bold text-base tracking-wide text-center"
+                            style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                            <th class="p-4 border-r border-indigo-500 whitespace-nowrap">วันที่ครบกำหนด</th>
+                            <th class="p-4 border-r border-indigo-500 whitespace-nowrap">เลขที่ IV</th>
+                            <th class="p-4 border-r border-indigo-500 whitespace-nowrap">รายละเอียด</th>
+                            <th class="p-3 border-r border-indigo-500 whitespace-nowrap">ประจำเดือน</th>
+                            <th class="p-4 border-r border-indigo-500 whitespace-nowrap">ลูกหนี้</th>
+                            <th class="p-4 border-r border-indigo-500 whitespace-nowrap">สถานะ</th>
+                            <th class="p-4 border-r border-indigo-500 whitespace-nowrap">หมายเหตุ</th>
+                            <th class="p-4 whitespace-nowrap">จำนวนเงิน</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="text-sm text-slate-700">
@@ -161,7 +201,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- ส่วนท้ายรายงาน: สรุปยอดและลายเซ็น (ห้ามแยกหน้ากัน) -->
             <div id="report-footer-section" class="mt-8">
                 <!-- สรุปยอดตามลูกหนี้ (Debtor Summary) -->
@@ -172,13 +212,15 @@
                 <!-- Table Footer -->
                 <div class="border-t border-slate-100 pt-8">
                     <div class="flex justify-end mb-12">
-                        <div class="flex items-center gap-4 px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
+                        <div
+                            class="flex items-center gap-4 px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
                             <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">ยอดเงินรวม:</span>
                             <span class="text-2xl font-black text-indigo-600" id="table-total-amount">0.00</span>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4 md:gap-12 text-center text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] pt-6">
+                    <div
+                        class="grid grid-cols-3 gap-4 md:gap-12 text-center text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] pt-6">
                         <div class="space-y-6">
                             <div class="h-10"></div>
                             <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
