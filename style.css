@@ -41,7 +41,7 @@ body {
         top: 0;
         width: 100%;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 15mm !important; /* เพิ่มระยะขอบให้เนื้อหาในหน้านี้แทน margin ของหน้ากระดาษ */
         border: none !important;
         box-shadow: none !important;
     }
@@ -49,13 +49,13 @@ body {
     button, select, [data-html2canvas-ignore] {
         display: none !important;
     }
-    /* ตั้งค่ากระดาษ A4 แนวตั้ง */
+    /* ตั้งค่ากระดาษ A4 แนวตั้ง และซ่อนหัว/ท้ายกระดาษ (URL/วันที่) */
     @page {
         size: A4 portrait;
-        margin: 15mm;
+        margin: 0;
     }
-    /* ป้องกันการตัดหน้ากลางตาราง */
-    tr {
+    /* ป้องกันการตัดหน้ากลางตารางและส่วนท้าย */
+    tr, #report-footer-section, #debtor-summary-container {
         page-break-inside: avoid !important;
     }
     table {

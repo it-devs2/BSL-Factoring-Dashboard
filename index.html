@@ -135,14 +135,14 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse border border-slate-300 table-fixed">
                     <colgroup>
-                        <col style="width: 10%;">
-                        <col style="width: 10%;">
-                        <col style="width: 15%;">
-                        <col style="width: 10%;">
-                        <col style="width: 15%;">
-                        <col style="width: 10%;">
-                        <col style="width: 15%;">
-                        <col style="width: 15%;">
+                        <col style="width: 13%;"> <!-- วันที่ครบกำหนด -->
+                        <col style="width: 13%;"> <!-- เลขที่ IV -->
+                        <col style="width: 15%;"> <!-- รายละเอียด -->
+                        <col style="width: 8%;">  <!-- ประจำเดือน -->
+                        <col style="width: 14%;"> <!-- ลูกหนี้ -->
+                        <col style="width: 8%;">  <!-- สถานะ -->
+                        <col style="width: 14%;"> <!-- หมายเหตุ -->
+                        <col style="width: 15%;"> <!-- จำนวนเงิน -->
                     </colgroup>
                     <thead>
                         <tr class="bg-indigo-600 border-b border-indigo-700 text-white font-bold text-base tracking-wide text-center" style="-webkit-print-color-adjust: exact; print-color-adjust: exact;">
@@ -162,35 +162,38 @@
                 </table>
             </div>
             
-            <!-- สรุปยอดตามลูกหนี้ (Debtor Summary) -->
-            <div id="debtor-summary-container" class="mt-8 mb-4 max-w-sm">
-                <!-- Injected by JS -->
-            </div>
-
-            <!-- Table Footer -->
-            <div class="mt-8 border-t border-slate-100 pt-8">
-                <div class="flex justify-end mb-12">
-                    <div class="flex items-center gap-4 px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
-                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">ยอดเงินรวม:</span>
-                        <span class="text-2xl font-black text-indigo-600" id="table-total-amount">0.00</span>
-                    </div>
+            <!-- ส่วนท้ายรายงาน: สรุปยอดและลายเซ็น (ห้ามแยกหน้ากัน) -->
+            <div id="report-footer-section" class="mt-8">
+                <!-- สรุปยอดตามลูกหนี้ (Debtor Summary) -->
+                <div id="debtor-summary-container" class="mb-8 max-w-sm">
+                    <!-- Injected by JS -->
                 </div>
 
-                <div class="grid grid-cols-3 gap-4 md:gap-12 text-center text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] pt-6">
-                    <div class="space-y-6">
-                        <div class="h-10"></div>
-                        <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
-                        <p>ผู้จัดทำ</p>
+                <!-- Table Footer -->
+                <div class="border-t border-slate-100 pt-8">
+                    <div class="flex justify-end mb-12">
+                        <div class="flex items-center gap-4 px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-inner">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">ยอดเงินรวม:</span>
+                            <span class="text-2xl font-black text-indigo-600" id="table-total-amount">0.00</span>
+                        </div>
                     </div>
-                    <div class="space-y-6">
-                        <div class="h-10"></div>
-                        <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
-                        <p>ผู้ตรวจสอบ</p>
-                    </div>
-                    <div class="space-y-6">
-                        <div class="h-10"></div>
-                        <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
-                        <p>ผู้อนุมัติ</p>
+
+                    <div class="grid grid-cols-3 gap-4 md:gap-12 text-center text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] pt-6">
+                        <div class="space-y-6">
+                            <div class="h-10"></div>
+                            <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
+                            <p>ผู้จัดทำ</p>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="h-10"></div>
+                            <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
+                            <p>ผู้ตรวจสอบ</p>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="h-10"></div>
+                            <div class="border-t border-slate-300 mx-4 md:mx-12"></div>
+                            <p>ผู้อนุมัติ</p>
+                        </div>
                     </div>
                 </div>
             </div>

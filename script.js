@@ -510,18 +510,23 @@ function renderTable(data) {
     }
     
     // แสดงข้อมูลในตารางหลัก
-    body.innerHTML = validData.map(r => `
-        <tr class="border-b border-slate-300 hover:bg-slate-50 transition-colors group text-center">
-            <td class="p-4 text-slate-500 font-medium border-r border-slate-300 break-words whitespace-normal">${r.c}</td>
-            <td class="p-4 font-bold text-slate-700 border-r border-slate-300 break-words whitespace-normal">${r.f}</td>
-            <td class="p-4 text-slate-600 border-r border-slate-300 break-words whitespace-normal text-left">${r.g}</td>
-            <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.h}</td>
-            <td class="p-4 font-bold text-indigo-600 border-r border-slate-300 break-words whitespace-normal text-left">${r.i}</td>
-            <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.s || ''}</td>
-            <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.t || ''}</td>
-            <td class="p-4 text-right font-black text-slate-800 break-words whitespace-normal">${formatMoney(r.n)}</td>
-        </tr>
-    `).join('');
+    body.innerHTML = validData.map(r => {
+        const note = r.t || '';
+        const noteClass = note.includes('ตัดจาก Fac ใหม่') ? 'text-rose-600 font-bold' : 'text-slate-500';
+        
+        return `
+            <tr class="border-b border-slate-300 hover:bg-slate-50 transition-colors group text-center">
+                <td class="p-4 text-slate-500 font-medium border-r border-slate-300 break-words whitespace-normal">${r.c}</td>
+                <td class="p-4 font-bold text-slate-700 border-r border-slate-300 break-words whitespace-normal">${r.f}</td>
+                <td class="p-4 text-slate-600 border-r border-slate-300 break-words whitespace-normal text-left">${r.g}</td>
+                <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.h}</td>
+                <td class="p-4 font-bold text-indigo-600 border-r border-slate-300 break-words whitespace-normal text-left">${r.i}</td>
+                <td class="p-4 text-slate-500 border-r border-slate-300 break-words whitespace-normal">${r.s || ''}</td>
+                <td class="p-4 ${noteClass} border-r border-slate-300 break-words whitespace-normal">${note}</td>
+                <td class="p-4 text-right font-black text-slate-800 break-words whitespace-normal">${formatMoney(r.n)}</td>
+            </tr>
+        `;
+    }).join('');
 
     // คำนวณสรุปยอดตามลูกหนี้ (Debtor Summary Table)
     if (summaryContainer) {
