@@ -166,16 +166,21 @@ function processRealData(summary, details) {
     });
 
     if (details && details.data) {
-        RAW_DATA1 = details.data;
         DATA1_COL.debtor = findColumnIndex(details.headers, ['ลูกหนี้', 'ลูกค้า', 'บริษัท'], 8);
+        DATA1_COL.status = findColumnIndex(details.headers, ['สถานะ'], 17);
+        
+        // กรองเฉพาะรายการที่สถานะเป็น Unpaid
+        RAW_DATA1 = details.data.filter((row) => {
+            return row[DATA1_COL.status] && row[DATA1_COL.status].toString().trim().toLowerCase() === 'unpaid';
+        });
         
         const buildInitial = (dateCol, valCol1, valCol2) => {
             const map = {};
             let grandTotal1 = 0;
             let grandTotal2 = 0;
             Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, limit: SUMMARY_MAP[k].limit, used: 0, remain: 0 });
-            RAW_DATA1.forEach((row, idx) => {
-                if (idx === 0 || !row[DATA1_COL.debtor]) return;
+            RAW_DATA1.forEach((row) => {
+                if (!row[DATA1_COL.debtor]) return;
                 const norm = normalizeName(row[DATA1_COL.debtor]);
                 const v1 = parseNumber(row[valCol1]);
                 const v2 = parseNumber(row[valCol2]);
@@ -232,8 +237,7 @@ function populateFilters(data) {
     const d2Set = new Set(), m2Set = new Set(), y2Set = new Set();
     const tmSet = new Set(), tySet = new Set(); // สำหรับตาราง
 
-    data.forEach((row, idx) => {
-        if (idx === 0) return;
+    data.forEach((row) => {
         const p1 = parseDateParts(row[DATA1_COL.date]); if (p1.m && p1.y) { m1Set.add(p1.m); y1Set.add(p1.y); }
         const p2 = parseDateParts(row[DATA1_COL.dueDate]); 
         if (p2.d && p2.m && p2.y) { 
@@ -272,8 +276,7 @@ function applyFilter1() {
     
     const map = {};
     Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, limit: SUMMARY_MAP[k].limit, used: 0 });
-    RAW_DATA1.forEach((row, idx) => {
-        if (idx === 0) return;
+    RAW_DATA1.forEach((row) => {
         const p = parseDateParts(row[DATA1_COL.date]);
         if ((!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
             const norm = normalizeName(row[DATA1_COL.debtor]);
@@ -299,8 +302,7 @@ function applyFilter2() {
     } else {
         const map = {};
         Object.keys(SUMMARY_MAP).forEach(k => map[k] = { name: SUMMARY_MAP[k].originalName, used: 0, remain: 0 });
-        RAW_DATA1.forEach((row, idx) => {
-            if (idx === 0) return;
+        RAW_DATA1.forEach((row) => {
             const p = parseDateParts(row[DATA1_COL.dueDate]);
             if ((!d || p.d === d.padStart(2, '0')) && (!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
                 const norm = normalizeName(row[DATA1_COL.debtor]);
@@ -327,8 +329,7 @@ function applyTableFilter() {
     let filtered = [];
     let totalAmount = 0;
 
-    RAW_DATA1.forEach((row, idx) => {
-        if (idx === 0) return;
+    RAW_DATA1.forEach((row) => {
         const p = parseDateParts(row[DATA1_COL.dueDate]);
         if ((!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
             const amt = parseNumber(row[DATA1_COL.bill]);
@@ -375,6 +376,7 @@ function applyTableFilter() {
 let c1Inst = null, c2Inst = null;
 const commonOptions = {
     responsive: true, maintainAspectRatio: false,
+    animation: { duration: 800, easing: 'easeOutQuart' },
     layout: { padding: { top: 30 } },
     plugins: { 
         legend: { position: 'top' },
@@ -387,33 +389,45 @@ const commonOptions = {
 };
 
 function updateChart1(data) {
-    if (c1Inst) c1Inst.destroy();
-    c1Inst = new Chart(document.getElementById('comparisonChart'), {
-        type: 'bar',
-        data: {
-            labels: data.map(x => x.name),
-            datasets: [
-                { label: 'วงเงิน', data: data.map(x => x.limit), backgroundColor: '#6366f1' },
-                { label: 'ยอดเบิก', data: data.map(x => x.used), backgroundColor: '#f43f5e' }
-            ]
-        },
-        options: commonOptions
-    });
+    if (c1Inst) {
+        c1Inst.data.labels = data.map(x => x.name);
+        c1Inst.data.datasets[0].data = data.map(x => x.limit);
+        c1Inst.data.datasets[1].data = data.map(x => x.used);
+        c1Inst.update();
+    } else {
+        c1Inst = new Chart(document.getElementById('comparisonChart'), {
+            type: 'bar',
+            data: {
+                labels: data.map(x => x.name),
+                datasets: [
+                    { label: 'วงเงิน', data: data.map(x => x.limit), backgroundColor: '#6366f1' },
+                    { label: 'ยอดเบิก', data: data.map(x => x.used), backgroundColor: '#f43f5e' }
+                ]
+            },
+            options: commonOptions
+        });
+    }
 }
 
 function updateChart2(data) {
-    if (c2Inst) c2Inst.destroy();
-    c2Inst = new Chart(document.getElementById('trendChart'), {
-        type: 'bar',
-        data: {
-            labels: data.map(x => x.name),
-            datasets: [
-                { label: 'ยอดที่ต้องชำระ (N)', data: data.map(x => x.used), backgroundColor: '#f43f5e' },
-                { label: 'ยอดคงเหลือรับ 10% (Q)', data: data.map(x => x.remain), backgroundColor: '#10b981' }
-            ]
-        },
-        options: commonOptions
-    });
+    if (c2Inst) {
+        c2Inst.data.labels = data.map(x => x.name);
+        c2Inst.data.datasets[0].data = data.map(x => x.used);
+        c2Inst.data.datasets[1].data = data.map(x => x.remain);
+        c2Inst.update();
+    } else {
+        c2Inst = new Chart(document.getElementById('trendChart'), {
+            type: 'bar',
+            data: {
+                labels: data.map(x => x.name),
+                datasets: [
+                    { label: 'ยอดที่ต้องชำระ (N)', data: data.map(x => x.used), backgroundColor: '#f43f5e' },
+                    { label: 'ยอดคงเหลือรับ 10% (Q)', data: data.map(x => x.remain), backgroundColor: '#10b981' }
+                ]
+            },
+            options: commonOptions
+        });
+    }
 }
 
 function renderTable(data) {
