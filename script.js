@@ -92,14 +92,42 @@ function parseDateParts(value) {
     else if (typeof value === 'number' && value > 30000) { dt = new Date((value - 25569) * 86400 * 1000); } 
     else {
         const str = value.toString().trim();
-        if (str.includes('/')) {
-            const p = str.split('/');
+        const p = str.split('/');
+        
+        // Handle Month/Year or Day/Month/Year formats (including Thai abbreviations)
+        if (p.length === 2 || p.length === 3) {
+            const shortMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const fullMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            
+            let d = "01", m = "", y = "";
             if (p.length === 3) {
-                let y = parseInt(p[2]);
-                if (y > 2400) y -= 543;
-                if (y < 100) y += 2000;
-                return { d: p[0].padStart(2, '0'), m: p[1].padStart(2, '0'), y: y.toString() };
+                d = p[0].padStart(2, '0');
+                m = p[1];
+                y = p[2];
+            } else {
+                m = p[0];
+                y = p[1];
             }
+            
+            // Resolve month from name or number
+            let mIdx = -1;
+            shortMonths.forEach((sm, i) => { if (m.includes(sm)) mIdx = i + 1; });
+            if (mIdx === -1) fullMonths.forEach((fm, i) => { if (m.includes(fm)) mIdx = i + 1; });
+            
+            if (mIdx !== -1) {
+                m = mIdx.toString().padStart(2, '0');
+            } else if (!isNaN(parseInt(m))) {
+                m = parseInt(m).toString().padStart(2, '0');
+            }
+            
+            let yNum = parseInt(y);
+            if (!isNaN(yNum)) {
+                if (yNum > 2400) yNum -= 543;
+                if (yNum < 100) yNum += 2000;
+                y = yNum.toString();
+            }
+            
+            if (m && y) return { d, m, y };
         }
         dt = new Date(str);
     }
@@ -174,10 +202,8 @@ function processRealData(summary, details) {
         DATA1_COL.note = findColumnIndex(details.headers, ['หมายเหตุ'], 19);
         DATA1_COL.payMonth = findColumnIndex(details.headers, ['เดือนที่กำหนดชำระ', 'Payment Month'], 21);
         
-        // กรองเฉพาะรายการที่สถานะเป็น Unpaid
-        RAW_DATA1 = details.data.filter((row) => {
-            return row[DATA1_COL.status] && row[DATA1_COL.status].toString().trim().toLowerCase() === 'unpaid';
-        });
+        // ใช้ข้อมูลทั้งหมด (รวมทั้ง Paid และ Unpaid)
+        RAW_DATA1 = details.data;
         
         const buildInitial = (dateCol, valCol1, valCol2) => {
             const map = {};
@@ -216,7 +242,7 @@ function processRealData(summary, details) {
         updateChart2(INITIAL_CHART_DATA.chart2);
         
         // กรองและแสดงตารางครั้งแรก
-        populateFilters(RAW_DATA1);
+        populateFilters(details.data);
         applyTableFilter(); 
     }
 }
@@ -241,14 +267,14 @@ function populateFilters(data) {
     const m1Set = new Set(), y1Set = new Set();
     const d2Set = new Set(), m2Set = new Set(), y2Set = new Set();
     const tmSet = new Set(), tySet = new Set(); // สำหรับตาราง
-
+    
     data.forEach((row) => {
         const p1 = parseDateParts(row[DATA1_COL.date]); if (p1.m && p1.y) { m1Set.add(p1.m); y1Set.add(p1.y); }
         const p2 = parseDateParts(row[DATA1_COL.dueDate]); 
         if (p2.d && p2.m && p2.y) { 
             d2Set.add(p2.d); m2Set.add(p2.m); y2Set.add(p2.y); 
         }
-        const pTable = parseDateParts(row[DATA1_COL.payMonth]);
+        const pTable = parseDateParts(row[DATA1_COL.dueDate]);
         if (pTable.m && pTable.y) {
             tmSet.add(pTable.m); tySet.add(pTable.y);
         }
@@ -338,9 +364,10 @@ function applyTableFilter() {
     let totalAmount = 0;
 
     RAW_DATA1.forEach((row) => {
-        const p = parseDateParts(row[DATA1_COL.payMonth]);
-        const pDue = parseDateParts(row[DATA1_COL.dueDate]);
-        if ((!m || p.m === m.padStart(2, '0')) && (!y || p.y === y)) {
+        const pTable = parseDateParts(row[DATA1_COL.dueDate]);
+        if ((!m || pTable.m === m.padStart(2, '0')) && (!y || pTable.y === y)) {
+            const pDue = pTable;
+            const pV = parseDateParts(row[DATA1_COL.payMonth]);
             const amt = parseNumber(row[DATA1_COL.bill]);
             totalAmount += amt;
             
@@ -351,10 +378,10 @@ function applyTableFilter() {
 
             // ฟอร์แมตเดือน/ปี สำหรับคอลัมน์ "ประจำเดือน" (ดึงจากคอลัมน์ V)
             let payMonthDisplay = row[DATA1_COL.payMonth];
-            if (p.m && p.y) {
+            if (pV.m && pV.y) {
                 const shortMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-                const monthIdx = parseInt(p.m, 10) - 1;
-                const shortYear = p.y.slice(-2);
+                const monthIdx = parseInt(pV.m, 10) - 1;
+                const shortYear = pV.y.slice(-2);
                 payMonthDisplay = `${shortMonths[monthIdx]}-${shortYear}`;
             }
 
