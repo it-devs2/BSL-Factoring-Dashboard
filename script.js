@@ -349,11 +349,20 @@ function applyTableFilter() {
                 shortDate = `${pDue.d}/${pDue.m}/${pDue.y}`;
             }
 
+            // ฟอร์แมตเดือน/ปี สำหรับคอลัมน์ "ประจำเดือน" (ดึงจากคอลัมน์ V)
+            let payMonthDisplay = row[DATA1_COL.payMonth];
+            if (p.m && p.y) {
+                const shortMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                const monthIdx = parseInt(p.m, 10) - 1;
+                const shortYear = p.y.slice(-2);
+                payMonthDisplay = `${shortMonths[monthIdx]}-${shortYear}`;
+            }
+
             filtered.push({
                 c: shortDate,
                 f: row[DATA1_COL.invoice],
-                g: row[DATA1_COL.bank],
-                h: row[DATA1_COL.jobType],
+                g: row[DATA1_COL.bank],   // รายละเอียด
+                h: payMonthDisplay,       // ประจำเดือน (ดึงจากคอลัมน์ V)
                 i: row[DATA1_COL.debtor],
                 s: row[DATA1_COL.status],
                 t: row[DATA1_COL.note],
