@@ -573,3 +573,358 @@ function exportToPDF() {
         window.print();
     }, 300);
 }
+
+/* =====================================================================
+   Daily PDF Report — เลือกวันที่หลายวัน → เปิดหน้า PDF preview ใน Chrome
+   ===================================================================== */
+let bslSelectedDates = new Set();
+let bslCalYear = new Date().getFullYear();
+let bslCalMonth = new Date().getMonth();
+let bslCalSelectsBuilt = false;
+
+function bslToDateKey(y, m, d) {
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function bslGetDatesWithData() {
+    const set = new Set();
+    if (!Array.isArray(RAW_DATA1) || RAW_DATA1.length === 0) return set;
+    RAW_DATA1.forEach(row => {
+        const p = parseDateParts(row[DATA1_COL.dueDate]);
+        if (p.y && p.m && p.d) set.add(`${p.y}-${p.m}-${p.d}`);
+    });
+    return set;
+}
+
+function bslPopulateCalSelects() {
+    if (bslCalSelectsBuilt) return;
+    const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const monthSel = document.getElementById('calMonthSel');
+    const yearSel = document.getElementById('calYearSel');
+    if (!monthSel || !yearSel) return;
+
+    monthSel.innerHTML = months.map((m, i) => `<option value="${i}">${m}</option>`).join('');
+
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = currentYear - 5; y <= currentYear + 10; y++) years.push(y);
+    yearSel.innerHTML = years.map(y => `<option value="${y}">${y + 543}</option>`).join('');
+
+    monthSel.addEventListener('change', () => {
+        bslCalMonth = parseInt(monthSel.value, 10);
+        bslRenderCalendar();
+    });
+    yearSel.addEventListener('change', () => {
+        bslCalYear = parseInt(yearSel.value, 10);
+        bslRenderCalendar();
+    });
+
+    bslCalSelectsBuilt = true;
+}
+
+function bslRenderCalendar() {
+    bslPopulateCalSelects();
+    const monthSel = document.getElementById('calMonthSel');
+    const yearSel = document.getElementById('calYearSel');
+    if (monthSel) monthSel.value = bslCalMonth;
+    if (yearSel) yearSel.value = bslCalYear;
+
+    const grid = document.getElementById('pdfCalGrid');
+    if (!grid) return;
+
+    const datesWithData = bslGetDatesWithData();
+    const firstDay = new Date(bslCalYear, bslCalMonth, 1).getDay();
+    const lastDate = new Date(bslCalYear, bslCalMonth + 1, 0).getDate();
+
+    let html = '';
+    for (let i = 0; i < firstDay; i++) html += '<div class="bsl-cal-day empty"></div>';
+    for (let d = 1; d <= lastDate; d++) {
+        const key = bslToDateKey(bslCalYear, bslCalMonth, d);
+        const hasData = datesWithData.has(key);
+        const selected = bslSelectedDates.has(key);
+        const cls = ['bsl-cal-day'];
+        if (hasData) cls.push('has-data');
+        if (selected) cls.push('selected');
+        html += `<div class="${cls.join(' ')}" data-key="${key}">${d}</div>`;
+    }
+    grid.innerHTML = html;
+
+    grid.querySelectorAll('.bsl-cal-day:not(.empty)').forEach(el => {
+        el.addEventListener('click', () => {
+            const k = el.dataset.key;
+            if (bslSelectedDates.has(k)) {
+                bslSelectedDates.delete(k);
+                el.classList.remove('selected');
+            } else {
+                bslSelectedDates.add(k);
+                el.classList.add('selected');
+            }
+            bslUpdateCalBar();
+        });
+    });
+    bslUpdateCalBar();
+}
+
+function bslUpdateCalBar() {
+    const bar = document.getElementById('calSelectedBar');
+    if (!bar) return;
+    if (bslSelectedDates.size === 0) {
+        bar.textContent = 'ยังไม่ได้เลือกวันที่';
+    } else {
+        bar.textContent = `เลือกแล้ว ${bslSelectedDates.size} วัน`;
+    }
+}
+
+function openBslPDFModal() {
+    bslSelectedDates.clear();
+    const overlay = document.getElementById('pdfModal');
+    if (overlay) overlay.classList.add('show');
+    bslRenderCalendar();
+}
+
+function closeBslPDFModal() {
+    const overlay = document.getElementById('pdfModal');
+    if (overlay) overlay.classList.remove('show');
+}
+
+function bslGeneratePDFPreview() {
+    if (bslSelectedDates.size === 0) {
+        alert('กรุณาเลือกวันที่อย่างน้อย 1 วัน');
+        return;
+    }
+
+    const selectedRows = [];
+    let grandTotal = 0;
+    const debtorTotals = {};
+
+    RAW_DATA1.forEach(row => {
+        const p = parseDateParts(row[DATA1_COL.dueDate]);
+        if (!p.y || !p.m || !p.d) return;
+        const key = `${p.y}-${p.m}-${p.d}`;
+        if (!bslSelectedDates.has(key)) return;
+
+        const debtor = (row[DATA1_COL.debtor] || '').toString().trim();
+        if (!debtor || debtor === 'ลูกหนี้' || debtor === 'ชื่อลูกหนี้' || debtor === 'Debtor') return;
+
+        const amt = parseNumber(row[DATA1_COL.bill]);
+        selectedRows.push({
+            dueDate: `${p.d}/${p.m}/${p.y}`,
+            invoice: row[DATA1_COL.invoice] || '',
+            bank: row[DATA1_COL.bank] || '',
+            jobType: row[DATA1_COL.jobType] || '',
+            debtor: debtor,
+            status: row[DATA1_COL.status] || '',
+            note: row[DATA1_COL.note] || '',
+            amount: amt,
+            _sortKey: parseInt(`${p.y}${p.m}${p.d}`, 10)
+        });
+        grandTotal += amt;
+        debtorTotals[debtor] = (debtorTotals[debtor] || 0) + amt;
+    });
+
+    if (selectedRows.length === 0) {
+        alert('ไม่พบข้อมูลในวันที่ที่เลือก');
+        return;
+    }
+    selectedRows.sort((a, b) => a._sortKey - b._sortKey);
+
+    // สร้างข้อความวันที่
+    const monthsFull = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                        'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const sortedDates = Array.from(bslSelectedDates).sort();
+    let dateDesc;
+    if (sortedDates.length === 1) {
+        const [y, m, d] = sortedDates[0].split('-').map(Number);
+        dateDesc = `${d} ${monthsFull[m - 1]} ${y + 543}`;
+    } else {
+        // ถ้าทุกวันอยู่ในเดือนเดียวกัน → "11, 20 พฤษภาคม 2569"
+        const sameMonthYear = sortedDates.every(s => {
+            const a = sortedDates[0].split('-');
+            const b = s.split('-');
+            return a[0] === b[0] && a[1] === b[1];
+        });
+        if (sameMonthYear) {
+            const [y, m] = sortedDates[0].split('-').map(Number);
+            const days = sortedDates.map(s => parseInt(s.split('-')[2], 10)).join(', ');
+            dateDesc = `${days} ${monthsFull[m - 1]} ${y + 543}`;
+        } else {
+            dateDesc = sortedDates.map(s => {
+                const [y, m, d] = s.split('-').map(Number);
+                return `${d}/${m}/${y + 543}`;
+            }).join(', ');
+        }
+    }
+
+    const tableRows = selectedRows.map(r => `
+        <tr>
+            <td style="text-align:center; white-space:nowrap;">${r.dueDate}</td>
+            <td style="text-align:center;">${r.invoice}</td>
+            <td>${r.bank}</td>
+            <td>${r.jobType}</td>
+            <td>${r.debtor}</td>
+            <td style="text-align:center;">${r.status}</td>
+            <td>${r.note}</td>
+            <td class="numeric">${formatMoney(r.amount)}</td>
+        </tr>`).join('');
+
+    const debtorRows = Object.entries(debtorTotals).map(([name, amt]) => `
+        <tr>
+            <td>${name}</td>
+            <td class="numeric">${formatMoney(amt)}</td>
+        </tr>`).join('');
+
+    const previewWin = window.open('', '_blank', 'width=1200,height=900');
+    if (!previewWin) {
+        alert('เบราว์เซอร์บล็อก popup กรุณาอนุญาต popup สำหรับเว็บไซต์นี้');
+        return;
+    }
+
+    previewWin.document.open();
+    previewWin.document.write(`<!DOCTYPE html>
+<html lang="th"><head>
+<meta charset="UTF-8">
+<title> </title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+    @page { size: A4 portrait; margin: 12mm 8mm; }
+    @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+    }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', sans-serif; padding: 12px; color: #1e293b; }
+    .pdf-title { text-align: center; font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .pdf-subtitle { text-align: center; font-size: 13px; color: #475569; margin-bottom: 16px; font-weight: 600; }
+    .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; color: #334155; table-layout: fixed; }
+    .pdf-table th, .pdf-table td {
+        border: 1px solid #cbd5e1; padding: 6px 8px;
+        text-align: left; vertical-align: middle; word-wrap: break-word; line-height: 1.4;
+    }
+    .pdf-table th {
+        background: #4f46e5; font-weight: 700; text-align: center;
+        vertical-align: middle; color: #ffffff;
+    }
+    @media print { .pdf-table th { background: #4f46e5 !important; color: #ffffff !important; } }
+    .numeric { text-align: right !important; white-space: nowrap; }
+    .pdf-summary { margin-top: 16px; }
+    .pdf-summary h4 {
+        font-size: 12px; font-weight: 700; color: #1e3a8a;
+        margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .pdf-summary table { width: 60%; min-width: 320px; border-collapse: collapse; font-size: 10px; }
+    .pdf-summary td { border: 1px solid #cbd5e1; padding: 5px 10px; }
+    .pdf-summary tfoot td { background: #eef2ff; font-weight: 700; color: #4338ca; }
+    .pdf-grand { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .pdf-grand-box {
+        background: #eef2ff; border: 1px solid #c7d2fe; padding: 10px 18px;
+        border-radius: 6px; font-size: 13px; font-weight: 700; color: #4338ca;
+    }
+    .pdf-signatures {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+        margin-top: 60px; text-align: center; font-size: 10px;
+        color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em;
+    }
+    .pdf-sig-box { border-top: 1px solid #94a3b8; padding-top: 8px; margin: 0 12px; }
+</style>
+</head>
+<body>
+    <div class="pdf-title">รายงานครบกำหนดชำระประจำวัน</div>
+    <div class="pdf-subtitle">ประจำวันที่ ${dateDesc}</div>
+    <table class="pdf-table">
+        <thead>
+            <tr>
+                <th style="width:11%;">วันครบกำหนด</th>
+                <th style="width:11%;">เลขที่ IV</th>
+                <th style="width:13%;">รายละเอียด</th>
+                <th style="width:9%;">ประจำเดือน</th>
+                <th style="width:16%;">ลูกหนี้</th>
+                <th style="width:9%;">สถานะ</th>
+                <th style="width:18%;">หมายเหตุ</th>
+                <th class="numeric" style="width:13%;">จำนวนเงิน</th>
+            </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+    </table>
+    <div class="pdf-grand">
+        <div class="pdf-grand-box">ยอดรวมทั้งสิ้น: ฿ ${formatMoney(grandTotal)}</div>
+    </div>
+    <div class="pdf-summary">
+        <h4>สรุปยอดตามลูกหนี้</h4>
+        <table>
+            <tbody>${debtorRows}</tbody>
+            <tfoot>
+                <tr><td>รวมทั้งสิ้น</td><td class="numeric">${formatMoney(grandTotal)}</td></tr>
+            </tfoot>
+        </table>
+    </div>
+    <div class="pdf-signatures">
+        <div><div class="pdf-sig-box">ผู้จัดทำ</div></div>
+        <div><div class="pdf-sig-box">ผู้ตรวจสอบ</div></div>
+        <div><div class="pdf-sig-box">ผู้อนุมัติ</div></div>
+    </div>
+<script>
+(function(){
+    function doPrint(){
+        try { window.focus(); window.print(); } catch(e){ console.error(e); }
+    }
+    function ready(cb){
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(function(){ setTimeout(cb, 300); });
+        } else {
+            setTimeout(cb, 600);
+        }
+    }
+    window.addEventListener('load', function(){ ready(doPrint); });
+})();
+<\/script>
+</body></html>`);
+    previewWin.document.close();
+    closeBslPDFModal();
+}
+
+// ผูก event listeners ของ Daily PDF Report
+document.addEventListener('DOMContentLoaded', () => {
+    const btnOpen = document.getElementById('btnDailyPDF');
+    if (btnOpen) btnOpen.addEventListener('click', openBslPDFModal);
+
+    const btnClose = document.getElementById('closePdfModal');
+    if (btnClose) btnClose.addEventListener('click', closeBslPDFModal);
+
+    const overlay = document.getElementById('pdfModal');
+    if (overlay) overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeBslPDFModal();
+    });
+
+    const btnGen = document.getElementById('btnGeneratePdf');
+    if (btnGen) btnGen.addEventListener('click', bslGeneratePDFPreview);
+
+    const btnPrev = document.getElementById('calPrev');
+    if (btnPrev) btnPrev.addEventListener('click', () => {
+        bslCalMonth--;
+        if (bslCalMonth < 0) { bslCalMonth = 11; bslCalYear--; }
+        bslRenderCalendar();
+    });
+
+    const btnNext = document.getElementById('calNext');
+    if (btnNext) btnNext.addEventListener('click', () => {
+        bslCalMonth++;
+        if (bslCalMonth > 11) { bslCalMonth = 0; bslCalYear++; }
+        bslRenderCalendar();
+    });
+
+    const btnSelAll = document.getElementById('calSelAll');
+    if (btnSelAll) btnSelAll.addEventListener('click', () => {
+        const datesWithData = bslGetDatesWithData();
+        datesWithData.forEach(k => {
+            const [y, m] = k.split('-').map(Number);
+            if (y === bslCalYear && m - 1 === bslCalMonth) bslSelectedDates.add(k);
+        });
+        bslRenderCalendar();
+    });
+
+    const btnClear = document.getElementById('calClear');
+    if (btnClear) btnClear.addEventListener('click', () => {
+        bslSelectedDates.clear();
+        bslRenderCalendar();
+    });
+});

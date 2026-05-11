@@ -53,6 +53,16 @@
                     </div>
                 </div>
 
+                <!-- ปุ่ม Daily PDF Report -->
+                <button id="btnDailyPDF" data-html2canvas-ignore="true"
+                    class="bg-rose-500 text-white hover:bg-rose-600 px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all font-bold text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17v-2a4 4 0 014-4h4M9 17H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v2M9 17h8a2 2 0 002-2v-2" />
+                    </svg>
+                    Daily PDF Report
+                </button>
+
                 <!-- ปุ่มเข้าสู่ Google Sheets -->
                 <a href="https://docs.google.com/spreadsheets/d/10t3F86oixH13nxtO7VnzpaATvoI79rgI-bNgzCzoM1g/edit?gid=799940825#gid=799940825"
                     target="_blank"
@@ -241,6 +251,34 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Daily PDF Report Modal -->
+    <div id="pdfModal" class="bsl-pdf-overlay">
+        <div class="bsl-pdf-sheet">
+            <div class="bsl-pdf-header">
+                <div class="bsl-pdf-title">📄 รายงานครบกำหนดชำระประจำวัน</div>
+                <button class="bsl-pdf-close" id="closePdfModal">×</button>
+            </div>
+            <div class="bsl-pdf-controls">
+                <div class="bsl-cal-topbar">
+                    <button class="bsl-cal-nav" id="calPrev">‹</button>
+                    <select class="bsl-cal-sel" id="calMonthSel"></select>
+                    <select class="bsl-cal-sel" id="calYearSel"></select>
+                    <button class="bsl-cal-nav" id="calNext">›</button>
+                    <button class="bsl-cal-selall" id="calSelAll">เลือกทั้งหมด</button>
+                    <button class="bsl-cal-clear" id="calClear">ล้าง</button>
+                </div>
+                <div class="bsl-cal-weekdays">
+                    <span>อา</span><span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span>
+                </div>
+                <div class="bsl-cal-grid" id="pdfCalGrid"></div>
+                <div class="bsl-cal-selected-bar" id="calSelectedBar">ยังไม่ได้เลือกวันที่</div>
+                <button class="bsl-btn-generate-pdf" id="btnGeneratePdf">
+                    🪄 สร้าง PDF รายงาน
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Custom Script -->
