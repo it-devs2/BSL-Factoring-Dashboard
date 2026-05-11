@@ -795,6 +795,67 @@ function bslGeneratePDFPreview() {
     body { font-family: 'Sarabun', sans-serif; padding: 12px; color: #1e293b; }
     .pdf-title { text-align: center; font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
     .pdf-subtitle { text-align: center; font-size: 13px; color: #475569; margin-bottom: 16px; font-weight: 600; }
+
+    /* ====== ThaiDrill Signboard Header ====== */
+    .td-signboard-wrap { margin-bottom: 14px; }
+    .td-signboard {
+        background: #e11d2e;
+        background-image: linear-gradient(180deg, #ef4444 0%, #e11d2e 55%, #b91c1c 100%);
+        padding: 4px 20px 10px; position: relative;
+    }
+    .td-company-corner {
+        text-align: right; font-size: 10px; font-weight: 700; color: #fff;
+        letter-spacing: 0.18em; text-shadow: 1px 1px 0 rgba(127,29,29,0.6); margin-bottom: 2px;
+    }
+    .td-main-row {
+        display: flex; align-items: center; justify-content: center;
+        gap: 18px; padding: 2px 0;
+    }
+    .td-line {
+        flex: 1; height: 4px; background: #fff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(203,213,225,0.6);
+        border-radius: 1px;
+    }
+    .td-title-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .td-title {
+        font-size: 30px; font-weight: 900; color: #fff;
+        letter-spacing: 0.01em; line-height: 1; font-style: italic; white-space: nowrap;
+        text-shadow:
+            -1px 0 0 #cbd5e1, 1px 0 0 #94a3b8, 0 1px 0 #94a3b8,
+            0 2px 0 #64748b, 0 3px 3px rgba(0,0,0,0.4);
+    }
+    .td-title-underline {
+        width: 90%; height: 3px; background: #fff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.25), inset 0 -1px 0 rgba(203,213,225,0.6);
+        border-radius: 1px;
+    }
+    .td-finance-tag {
+        position: absolute; right: 20px; bottom: 6px;
+        font-size: 11px; font-weight: 700; color: #fff;
+        letter-spacing: 0.25em; text-transform: uppercase; font-style: italic;
+        text-shadow: 1px 1px 0 rgba(127,29,29,0.55); opacity: 0.95;
+    }
+    .td-gray-strip {
+        height: 8px; background: #94a3b8;
+        background-image: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+    }
+    .td-shadow-strip {
+        height: 4px; background: #475569;
+        background-image: linear-gradient(180deg, #64748b 0%, #334155 100%);
+    }
+    .td-report-title {
+        text-align: center; font-size: 17px; font-weight: 700; color: #0f172a;
+        padding: 12px 16px 4px; letter-spacing: 0.02em;
+    }
+    .td-report-title b { color: #b91c1c; font-weight: 800; }
+    .td-report-title .rpt-brand { color: #b91c1c; font-weight: 800; font-style: italic; }
+    @media print {
+        .td-signboard, .td-gray-strip, .td-shadow-strip,
+        .td-line, .td-title, .td-title-underline, .td-finance-tag, .td-company-corner {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
     .pdf-table { width: 100%; border-collapse: collapse; font-size: 10px; color: #334155; table-layout: fixed; }
     .pdf-table th, .pdf-table td {
         border: 1px solid #cbd5e1; padding: 6px 8px;
@@ -828,8 +889,23 @@ function bslGeneratePDFPreview() {
 </style>
 </head>
 <body>
-    <div class="pdf-title">รายงานครบกำหนดชำระประจำวัน</div>
-    <div class="pdf-subtitle">ประจำวันที่ ${dateDesc}</div>
+    <div class="td-signboard-wrap">
+        <div class="td-signboard">
+            <div class="td-company-corner">บริษัท รถเจาะไทย จำกัด</div>
+            <div class="td-main-row">
+                <div class="td-line"></div>
+                <div class="td-title-wrap">
+                    <div class="td-title">ThaiDrill</div>
+                    <div class="td-title-underline"></div>
+                </div>
+                <div class="td-line"></div>
+            </div>
+            <div class="td-finance-tag">Finance</div>
+        </div>
+        <div class="td-gray-strip"></div>
+        <div class="td-shadow-strip"></div>
+        <div class="td-report-title">รายงานครบกำหนดชำระ <span class="rpt-brand">ThaiDrill</span> ประจำวันที่ <b>${dateDesc}</b></div>
+    </div>
     <table class="pdf-table">
         <thead>
             <tr>
